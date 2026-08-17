@@ -1,0 +1,10 @@
+Command line invocation:
+    /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild -workspace SymcureNew.xcworkspace -scheme SymcureNew -configuration Debug -sdk iphonesimulator build
+
+Build settings from command line:
+    SDKROOT = iphonesimulator26.2
+
+2026-08-14 16:45:31.572 xcodebuild[16911:485727] [MT] IDERunDestination: Supported platforms for the buildables in the current scheme is empty.
+2026-08-14 16:45:32.018 xcodebuild[16911:485727] Writing error result bundle to /var/folders/9j/617v3vjs48q6jz7dpl5q6k900000gn/T/ResultBundle_2026-14-08_16-45-0032.xcresult
+xcodebuild: error: Scheme SymcureNew is not currently configured for the build action.
+
