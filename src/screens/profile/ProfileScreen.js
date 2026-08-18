@@ -37,25 +37,22 @@ import { useDispatch } from 'react-redux';
 
 export default function ProfileScreen({ navigation }) {
   const dispatch = useDispatch();
-  const [profileModal, setProfileModal] = useState(false);
+
   const { data: profilesResponse, isLoading: profilesLoading } =
     useProfilesQuery();
-
   const { data: activeProfileResponse, isLoading: activeProfileLoading } =
     useActiveProfileQuery();
-
   const { mutateAsync: updateProfile, isPending: updatingProfile } =
     useUpdateProfileMutation();
-
   const profiles =
     profilesResponse?.profiles || profilesResponse?.data?.profiles || [];
-
   const activeProfile =
     activeProfileResponse?.profile ||
     activeProfileResponse?.data?.profile ||
     activeProfileResponse?.data ||
     activeProfileResponse;
 
+  const [profileModal, setProfileModal] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showRelationshipModal, setShowRelationshipModal] = useState(false);
 
@@ -183,7 +180,6 @@ export default function ProfileScreen({ navigation }) {
   const { data: citiesResponse } = useCitiesQuery(selectedStateId);
 
   const states = statesResponse?.data?.states || [];
-
   const cities = citiesResponse?.data?.cities || [];
 
   const handleSaveProfile = async () => {
@@ -872,7 +868,7 @@ const styles = StyleSheet.create({
   },
 
   statValue: { color: '#fff', fontSize: 18, fontFamily: fonts.semiBold, },
-  statLabel: { color: '#fff', fontSize: Platform.OS === 'ios'? 8: 11, fontFamily: fonts.semiBold, },
+  statLabel: { color: '#fff', fontSize: Platform.OS === 'ios' ? 8 : 11, fontFamily: fonts.semiBold, },
 
   content: { padding: 16 },
 
@@ -923,7 +919,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 16,
-    paddingBottom: 90,
+    // paddingBottom: 90,
     backgroundColor: '#F4F7FD',
     borderTopWidth: 1,
     borderTopColor: '#E6EBF5',

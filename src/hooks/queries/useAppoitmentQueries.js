@@ -18,7 +18,8 @@ export const useAvailableSlots = ({
 
     enabled: !!doctorId && !!date && consultType === 'offline',
 
-    staleTime: 30 * 1000,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 };
 

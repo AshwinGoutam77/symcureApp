@@ -18,28 +18,54 @@ import {
 } from '../../hooks/queries/useAppoitmentQueries';
 import { useQueryClient } from '@tanstack/react-query';
 
-function Slot({ slot, selected, onPress }) {
-  const disabled = !slot?.bookable;
-
+function Slot({
+  time,
+  selected,
+  onPress,
+  clinicSlots,
+  disabled,
+  alreadyBooked,
+}) {
   return (
     <TouchableOpacity
       onPress={onPress}
-      disabled={disabled}
+      disabled={disabled || alreadyBooked}
       style={[
         styles.slot,
         selected && styles.slotActive,
-        disabled && styles.slotDisabled,
-      ]}
-    >
+
+        disabled && !alreadyBooked && {
+          backgroundColor: '#cecece49',
+          borderStyle: 'dashed',
+          borderColor: '#cececec3',
+        },
+
+        alreadyBooked && {
+          backgroundColor: '#FEF2F2',
+          borderColor: '#FECACA',
+        },
+
+        {
+          width: clinicSlots ? '45%' : '30%',
+        },
+      ]}>
+
       <Text
         style={[
           styles.slotText,
           selected && styles.slotTextActive,
-          disabled && styles.slotTextDisabled,
-        ]}
-      >
-        {slot?.label}
+          alreadyBooked && {
+            color: '#DC2626',
+          },
+        ]}>
+        {time}
       </Text>
+
+      {alreadyBooked && (
+        <Text style={styles.bookedText}>
+          Already booked
+        </Text>
+      )}
     </TouchableOpacity>
   );
 }
@@ -55,7 +81,7 @@ export default function RescheduleAppointmentScreen({ navigation, route }) {
     currentStart,
     currentEnd,
   } = route?.params || {};
-  
+
   const [selectedDate, setSelectedDate] = useState(0);
   const [selectedSlot, setSelectedSlot] = useState(null);
   const [rescheduleError, setRescheduleError] = useState('');
@@ -140,6 +166,11 @@ export default function RescheduleAppointmentScreen({ navigation, route }) {
         queryKey: ['dashboard'],
       });
 
+      // available-slots
+      await queryClient.invalidateQueries({
+        queryKey: ['available-slots'],
+      });
+      
       navigation.replace('AppointmentDetailScreen', {
         appointmentId,
       });
@@ -151,13 +182,13 @@ export default function RescheduleAppointmentScreen({ navigation, route }) {
       if (errorData?.code === 'DUPLICATE_BOOKING') {
         setRescheduleError(
           errorData?.message ||
-            'You already have a booking with this doctor for this session.',
+          'You already have a booking with this doctor for this session.',
         );
         return;
       }
       setRescheduleError(
         errorData?.message ||
-          'Unable to reschedule appointment. Please try again.',
+        'Unable to reschedule appointment. Please try again.',
       );
     }
   };
@@ -280,14 +311,29 @@ export default function RescheduleAppointmentScreen({ navigation, route }) {
           </View>
         ) : (
           <View style={styles.grid}>
-            {clinicSlots.map(slot => (
-              <Slot
-                key={slot.session_id}
-                slot={slot}
-                selected={selectedSlot?.session_id === slot.session_id}
-                onPress={() => handleSlotSelect(slot)}
-              />
-            ))}
+            {clinicSlots.map(slot => {
+              const alreadyBooked = slot.is_already_booked;
+
+              return (
+                <Slot
+                  key={slot.session_id}
+                  time={slot.label}
+                  selected={
+                    selectedSlot?.session_id === slot.session_id
+                  }
+                  disabled={!slot.bookable}
+                  alreadyBooked={alreadyBooked}
+                  onPress={() => {
+                    if (!slot.bookable || alreadyBooked) {
+                      return;
+                    }
+
+                    setSelectedSlot(slot);
+                  }}
+                  clinicSlots
+                />
+              );
+            })}
           </View>
         )}
 
@@ -560,6 +606,19 @@ const styles = StyleSheet.create({
 
   slotTextDisabled: {
     color: '#9CA3AF',
+  },
+
+  bookedText: {
+    marginTop: 2,
+    fontSize: 10,
+    color: '#ffffffff',
+    fontFamily: fonts.bold,
+    position: 'absolute',
+    top: '-12',
+    backgroundColor: '#DC2626',
+    padding: 1,
+    paddingHorizontal: 10,
+    borderRadius: 10
   },
 
   seatsText: {

@@ -15,25 +15,54 @@ import { useTranslation } from 'react-i18next';
 import { Modal } from 'react-native';
 import { useAvailableSlots } from '../../hooks/queries/useAppoitmentQueries';
 
-function Slot({ time, selected, onPress, clinicSlots, disabled }) {
+function Slot({
+  time,
+  selected,
+  onPress,
+  clinicSlots,
+  disabled,
+  alreadyBooked,
+}) {
   return (
     <TouchableOpacity
       onPress={onPress}
+      disabled={disabled || alreadyBooked}
       style={[
         styles.slot,
         selected && styles.slotActive,
-        disabled && {
+
+        disabled && !alreadyBooked && {
           backgroundColor: '#cecece49',
           borderStyle: 'dashed',
           borderColor: '#cececec3',
         },
-        { width: clinicSlots ? '40%' : '30%' },
-      ]}
-      disabled={disabled}
-    >
-      <Text style={[styles.slotText, selected && styles.slotTextActive]}>
+
+        alreadyBooked && {
+          backgroundColor: '#FEF2F2',
+          borderColor: '#FECACA',
+        },
+
+        {
+          width: clinicSlots ? '45%' : '30%',
+        },
+      ]}>
+
+      <Text
+        style={[
+          styles.slotText,
+          selected && styles.slotTextActive,
+          alreadyBooked && {
+            color: '#DC2626',
+          },
+        ]}>
         {time}
       </Text>
+
+      {alreadyBooked && (
+        <Text style={styles.bookedText}>
+          Already booked
+        </Text>
+      )}
     </TouchableOpacity>
   );
 }
@@ -194,7 +223,7 @@ export default function SelectSlotScreen({ navigation, route }) {
                 styles.dateBox,
                 selectedDate === i && styles.activeDateBox,
               ]}
-              onPress={() => {setSelectedDate(i); setSelectedClinicSlot(null); setSelectedTime('')}}
+              onPress={() => { setSelectedDate(i); setSelectedClinicSlot(null); setSelectedTime('') }}
             >
               <Text
                 style={[styles.day, selectedDate === i && styles.activeDay]}
@@ -271,24 +300,30 @@ export default function SelectSlotScreen({ navigation, route }) {
               </View>
             ) : (
               <View style={styles.grid}>
-                {clinicSlots.map(slot => (
-                  <Slot
-                    key={slot.session_id}
-                    time={slot.label}
-                    selected={
-                      selectedClinicSlot?.session_id === slot.session_id
-                    }
-                    disabled={!slot.bookable}
-                    onPress={() => {
-                      if (!slot.bookable) {
-                        return;
+                {clinicSlots.map(slot => {
+                  const alreadyBooked = slot.is_already_booked;
+
+                  return (
+                    <Slot
+                      key={slot.session_id}
+                      time={slot.label}
+                      selected={
+                        selectedClinicSlot?.session_id === slot.session_id
                       }
-                      setSelectedClinicSlot(slot);
-                      setSelectedTime(slot.label);
-                    }}
-                    clinicSlots
-                  />
-                ))}
+                      disabled={!slot.bookable}
+                      alreadyBooked={alreadyBooked}
+                      onPress={() => {
+                        if (!slot.bookable || alreadyBooked) {
+                          return;
+                        }
+
+                        setSelectedClinicSlot(slot);
+                        setSelectedTime(slot.label);
+                      }}
+                      clinicSlots
+                    />
+                  );
+                })}
               </View>
             )}
 
@@ -342,8 +377,8 @@ export default function SelectSlotScreen({ navigation, route }) {
               {mode === 'video'
                 ? '₹499'
                 : clinicFee !== null
-                ? `₹${clinicFee}`
-                : '—'}
+                  ? `₹${clinicFee}`
+                  : '—'}
             </Text>
           </View>
 
@@ -351,17 +386,17 @@ export default function SelectSlotScreen({ navigation, route }) {
             title={t('proceedPayment')}
             onPress={() => {
               navigation.navigate('PaymentScreen', {
-                    doctorId,
-                    doctorDetail,
-                    consultType: 'offline',
-                    date: dates[selectedDate]?.apiDate,
-                    time: dates[selectedDate]?.apiDate,
-                    selectedSlot: selectedClinicSlot,
-                    reasonForVisit: '',
-                    notes: '',
-                    shareRecords: true,
-                    mode: 'offline',
-                  });
+                doctorId,
+                doctorDetail,
+                consultType: 'offline',
+                date: dates[selectedDate]?.apiDate,
+                time: dates[selectedDate]?.apiDate,
+                selectedSlot: selectedClinicSlot,
+                reasonForVisit: '',
+                notes: '',
+                shareRecords: true,
+                mode: 'offline',
+              });
             }}
           />
         </View>
@@ -576,12 +611,13 @@ const styles = StyleSheet.create({
 
   grid: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     flexWrap: 'wrap',
   },
 
   slot: {
-    width: '30%',
-    margin: '1.5%',
+    width: '50%',
+    margin: '2%',
     padding: 12,
     borderRadius: 12,
     backgroundColor: '#fff',
@@ -603,6 +639,19 @@ const styles = StyleSheet.create({
 
   slotTextActive: {
     color: '#fff',
+  },
+
+  bookedText: {
+    marginTop: 2,
+    fontSize: 10,
+    color: '#ffffffff',
+    fontFamily: fonts.bold,
+    position: 'absolute',
+    top: '-12',
+    backgroundColor: '#DC2626',
+    padding: 1,
+    paddingHorizontal: 10,
+    borderRadius: 10
   },
 
   noteText: {

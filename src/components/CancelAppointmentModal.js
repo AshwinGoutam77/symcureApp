@@ -21,7 +21,7 @@ const CancelAppointmentModal = ({
   return (
     <>
       {/* CANCEL MODAL */}
-      <View style={[styles.modalOverlay,{bottom: hasBottomBar ? 71: 0}]} onTouchEnd={onClose}>
+      <View style={[styles.modalOverlay,{bottom: hasBottomBar ? 0 : 0}]} onTouchEnd={onClose}>
         <View
           style={styles.modalContainer}
           onTouchEnd={e => e.stopPropagation()}

@@ -92,7 +92,7 @@ export default function BookingSuccessScreen({ navigation, route }) {
     'DR';
 
   const appointmentDate = appointment?.date;
-  const appointmentTime = appointment?.time_label;
+  const appointmentTime = appointment?.slot_text;
   const consultType = appointment?.consult_type;
   const tokenNumber = appointment?.token_number;
   const appointmentCode = appointment?.appointment_code;
@@ -418,7 +418,7 @@ const styles = StyleSheet.create({
     width: '100%',
     backgroundColor: '#FFFFFF',
     borderRadius: 18,
-    padding: 16,
+    padding: 22,
     marginBottom: 12,
     shadowRadius: 8,
   },
@@ -455,7 +455,7 @@ const styles = StyleSheet.create({
   },
 
   docMeta: {
-    marginTop: 3,
+    marginTop: 1,
     fontFamily: fonts.medium,
     fontSize: 12,
     color: colors.textSecondary,

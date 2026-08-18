@@ -21,7 +21,7 @@ import { Animated } from 'react-native';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import RefreshableScrollView from '../../components/common/RefreshableScrollView';
 import { useDashboardQuery } from '../../hooks/queries/useDashboardQueries';
 import ManageProfilesModal from '../../components/common/ManageProfilesModal';
 import {
@@ -41,10 +41,10 @@ export default function HomeScreen({ navigation }) {
 
   const [profileModal, setProfileModal] = useState(false);
 
-  const { data: profilesResponse, isLoading: profilesLoading } =
+  const { data: profilesResponse, isLoading: profilesLoading, refetch: refetchProfiles, } =
     useProfilesQuery();
 
-  const { data: activeProfileResponse, isLoading: activeProfileLoading } =
+  const { data: activeProfileResponse, isLoading: activeProfileLoading, refetch: refetchActiveProfile, } =
     useActiveProfileQuery();
 
   const { mutateAsync: switchProfile, isPending: switchingProfile } =
@@ -125,6 +125,18 @@ export default function HomeScreen({ navigation }) {
       ]),
     ).start();
   }, [opacity, scale]);
+
+  const handleRefresh = async () => {
+  try {
+    await Promise.all([
+      refetchDashboard(),
+      refetchProfiles(),
+      refetchActiveProfile(),
+    ]);
+  } catch (error) {
+    console.log('HOME REFRESH ERROR:', error);
+  }
+};
 
   if (isDashboardLoading) {
     return (
@@ -421,11 +433,12 @@ export default function HomeScreen({ navigation }) {
       </LinearGradient>
 
       <View style={styles.container}>
-        <ScrollView
-          style={styles.content}
-          contentContainerStyle={{ paddingBottom: 100 }}
-          showsVerticalScrollIndicator={false}
-        >
+        <RefreshableScrollView
+  style={styles.content}
+  contentContainerStyle={{paddingBottom: 100}}
+  showsVerticalScrollIndicator={false}
+  onRefresh={handleRefresh}
+>
           {/* Recently Consulted */}
           <View>
             <View style={styles.sectionHeader}>
@@ -771,7 +784,7 @@ export default function HomeScreen({ navigation }) {
               </View>
             </View>
           </TouchableOpacity>
-        </ScrollView>
+        </RefreshableScrollView>
 
         <ManageProfilesModal
           visible={profileModal}
