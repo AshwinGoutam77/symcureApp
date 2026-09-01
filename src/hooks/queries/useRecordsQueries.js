@@ -27,6 +27,15 @@ export const usePrescriptionDetail = prescriptionId => {
   });
 };
 
+export const usePrescriptionPdfFormat = doctorId => {
+  return useQuery({
+    queryKey: ['prescription-pdf-format', doctorId],
+    queryFn: () =>
+      recordService.getPrescriptionPdfFormat(doctorId),
+    enabled: !!doctorId,
+  });
+};
+
 export const useReports = params => {
   return useQuery({
     queryKey: ['reports', params],

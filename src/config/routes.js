@@ -3,6 +3,7 @@
 export const API_ROUTES = {
   auth: {
     sendOtp: '/patient/auth/send-otp',
+    resendOtp: '/patient/auth/resend-otp',
     verifyOtp: '/patient/auth/verify-otp',
     me: '/patient/auth/me',
     logout: '/patient/auth/logout',
@@ -50,6 +51,10 @@ export const API_ROUTES = {
   records: {
     list: '/patient/records',
     detail: id => `/patient/records/${id}`,
+  },
+
+   content: {
+    legal: slug => `/patient/content/${slug}`,
   },
 };
 

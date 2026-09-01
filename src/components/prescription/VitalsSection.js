@@ -1,59 +1,62 @@
 import React from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 
-import Feather from 'react-native-vector-icons/Feather';
 import {colors, fonts} from '../../theme';
 
-export default function VitalsSection({vitals}) {
-  if (!vitals) return null;
+export default function VitalsSection({vitals, settings}) {
+  if (!vitals || !settings?.enabled) return null;
 
   const DATA = [
     {
-      icon: 'activity',
+      enabled: settings?.bp,
       label: 'Blood Pressure',
       value: vitals.bp_mm_hg ? `${vitals.bp_mm_hg} mmHg` : null,
     },
     {
-      icon: 'heart',
+      enabled: settings?.pulse,
       label: 'Pulse',
       value: vitals.pulse_bpm ? `${vitals.pulse_bpm} bpm` : null,
     },
     {
-      icon: 'thermometer',
+      enabled: settings?.temperature,
       label: 'Temperature',
       value: vitals.temperature_f ? `${vitals.temperature_f} °F` : null,
     },
     {
-      icon: 'wind',
+      enabled: settings?.spo2,
       label: 'SpO₂',
       value: vitals.spo2 ? `${vitals.spo2}%` : null,
     },
     {
-      icon: 'user',
+      enabled: settings?.weight,
       label: 'Weight',
       value: vitals.weight_kg ? `${vitals.weight_kg} kg` : null,
     },
     {
-      icon: 'maximize',
+      enabled: settings?.height,
       label: 'Height',
       value: vitals.height_cm ? `${vitals.height_cm} cm` : null,
     },
     {
-      icon: 'grid',
+      enabled: settings?.bmi,
       label: 'BMI',
       value: vitals.bmi,
     },
     {
-      icon: 'loader',
+      enabled: settings?.respiratoryRate,
       label: 'Respiratory',
-      value: vitals.respiratory_rate ? `${vitals.respiratory_rate}/min` : null,
+      value: vitals.respiratory_rate
+        ? `${vitals.respiratory_rate}/min`
+        : null,
     },
     {
-      icon: 'square',
+      enabled: settings?.bsa,
       label: 'BSA',
       value: vitals.bsa,
     },
-  ].filter(item => item.value);
+  ].filter(item => item.enabled && item.value);
+
+  if (!DATA.length) return null;
 
   return (
     <View style={styles.card}>
@@ -62,13 +65,8 @@ export default function VitalsSection({vitals}) {
       <View style={styles.grid}>
         {DATA.map((item, index) => (
           <View key={index} style={styles.item}>
-            {/* <View style={styles.iconBox}>
-              <Feather name={item.icon} size={18} color={colors.primary} />
-            </View> */}
-
             <View style={{flex: 1}}>
               <Text style={styles.label}>{item.label}</Text>
-
               <Text style={styles.value}>{item.value}</Text>
             </View>
           </View>
@@ -107,16 +105,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 14,
     marginBottom: 12,
-  },
-
-  iconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#EEF4FF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
   },
 
   label: {

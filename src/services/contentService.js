@@ -1,9 +1,9 @@
 import apiClient from './apiClient';
+import {API_ROUTES} from '../config/routes';
 
 const contentService = {
-  getContent: slug => apiClient.get(`/patient/content/${slug}`),
-
-  getAppConfig: () => apiClient.get('/patient/app-config'),
+  getLegalContent: slug =>
+    apiClient.get(API_ROUTES.content.legal(slug)),
 };
 
 export default contentService;

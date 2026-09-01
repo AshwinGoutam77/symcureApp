@@ -1,4 +1,4 @@
-import {createSlice} from '@reduxjs/toolkit';
+import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   accessToken: null,
@@ -9,15 +9,15 @@ const initialState = {
   user: null,
   profileStatus: null,
 
+  primaryAccount: null,
+
   patientAccountId: null,
   activeProfile: null,
   profiles: [],
 
-  // Onboarding
   onboardingRequired: false,
   onboarding: null,
 
-  // Family member flow
   familyMemberFlow: false,
   familyMemberPhone: null,
 
@@ -34,9 +34,9 @@ const authSlice = createSlice({
     setSession: (state, action) => {
       const payload = action.payload || {};
 
-      // -----------------------------------------
+      // =========================================
       // AUTH
-      // -----------------------------------------
+      // =========================================
 
       state.accessToken =
         payload.access_token ?? null;
@@ -59,89 +59,95 @@ const authSlice = createSlice({
       state.isAuthenticated =
         Boolean(payload.access_token);
 
-      // -----------------------------------------
+      // =========================================
       // PATIENT PROFILES
-      // -----------------------------------------
-
-      state.patientAccountId =
-        payload?.active_profile?.patient_account_id ??
-        payload?.primary_account?.patient_account_id ??
-        null;
-
-      state.activeProfile =
-        payload?.active_profile ??
-        payload?.primary_account ??
-        null;
+      // =========================================
 
       state.profiles =
-        payload?.profiles ?? [];
+        payload.profiles ?? [];
 
-      // -----------------------------------------
+      // IMPORTANT:
+      // Backend can return active_profile = null
+      // when the user needs to choose a profile.
+      state.activeProfile =
+        payload.active_profile ?? null;
+
+      state.patientAccountId =
+        payload.active_profile?.patient_account_id ??
+        null;
+
+      // =========================================
       // ONBOARDING
-      // -----------------------------------------
+      // =========================================
 
       state.onboarding =
-        payload?.onboarding ?? null;
+        payload.onboarding ?? null;
 
       state.onboardingRequired =
         payload?.onboarding?.basic_details_required === true;
+
+      // =========================================
+      // FAMILY MEMBER FLOW
+      // =========================================
+
+      state.familyMemberFlow = false;
+      state.familyMemberPhone = null;
     },
 
     // UPDATE USER
     setAuthUser: (state, action) => {
       const payload = action.payload || {};
 
-      state.user =
-        payload.user ?? null;
+      // =========================================
+      // USER
+      // =========================================
 
-      state.profileStatus =
-        payload.profile_status ?? null;
+      if (payload.user !== undefined) {
+        state.user = payload.user;
+      }
 
-        if (payload.profile) {
-    state.activeProfile = payload.profile;
+      if (payload.profile_status !== undefined) {
+        state.profileStatus =
+          payload.profile_status;
+      }
 
-    state.patientAccountId =
-      payload.profile.patient_account_id ?? null;
-  }
-
-      // -----------------------------------------
+      // =========================================
       // ACTIVE PROFILE
-      // -----------------------------------------
+      // =========================================
 
-      if (payload.active_profile) {
-        state.activeProfile =
-          payload.active_profile;
+      const profile =
+        payload.active_profile ??
+        payload.profile ??
+        null;
+
+      if (profile) {
+        state.activeProfile = profile;
 
         state.patientAccountId =
-          payload.active_profile.patient_account_id;
+          profile.patient_account_id ?? null;
       }
 
-      // -----------------------------------------
-      // PRIMARY ACCOUNT
-      // -----------------------------------------
-
-      if (payload.primary_account) {
-        state.patientAccountId =
-          payload.primary_account.patient_account_id;
-
-        if (!state.activeProfile) {
-          state.activeProfile =
-            payload.primary_account;
-        }
-      }
-
-      // -----------------------------------------
+      // =========================================
       // ALL PROFILES
-      // -----------------------------------------
+      // =========================================
 
       if (payload.profiles) {
         state.profiles =
           payload.profiles;
       }
 
-      // -----------------------------------------
+      // =========================================
+      // PRIMARY ACCOUNT
+      // =========================================
+
+      if (payload.primary_account) {
+        state.primaryAccount =
+          payload.primary_account;
+      }
+
+      // =========================================
       // ONBOARDING
-      // -----------------------------------------
+      // =========================================
 
       if (payload.onboarding) {
         state.onboarding =
@@ -152,15 +158,20 @@ const authSlice = createSlice({
             .basic_details_required === true;
       }
 
-      // -----------------------------------------
+      // =========================================
       // ACCESS TOKEN
-      // -----------------------------------------
+      // =========================================
 
       if (payload.access_token) {
         state.accessToken =
           payload.access_token;
 
         state.isAuthenticated = true;
+      }
+
+      if (payload.refresh_token) {
+        state.refreshToken =
+          payload.refresh_token;
       }
     },
 
@@ -190,22 +201,22 @@ const authSlice = createSlice({
 
     // Family member
     setFamilyMemberFlow: (state, action) => {
-    state.familyMemberFlow = true;
-    state.familyMemberPhone = action.payload?.phone ?? null;
+      state.familyMemberFlow = true;
+      state.familyMemberPhone = action.payload?.phone ?? null;
 
-    state.onboardingRequired = true;
+      state.onboardingRequired = true;
 
-    if (!state.onboarding) {
-      state.onboarding = {};
-    }
+      if (!state.onboarding) {
+        state.onboarding = {};
+      }
 
-    state.onboarding.basic_details_required = true;
-  },
+      state.onboarding.basic_details_required = true;
+    },
 
-  clearFamilyMemberFlow: state => {
-  state.familyMemberFlow = false;
-  state.familyMemberPhone = null;
-},
+    clearFamilyMemberFlow: state => {
+      state.familyMemberFlow = false;
+      state.familyMemberPhone = null;
+    },
 
     // =========================================
     // LOGOUT

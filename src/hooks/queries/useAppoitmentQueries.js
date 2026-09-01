@@ -36,7 +36,7 @@ export const useAppointments = params => {
       const response = await appointmentService.getAppointments(params);
       return response?.data;
     },
-    staleTime: 30000,
+    staleTime: 0,
   });
 };
 

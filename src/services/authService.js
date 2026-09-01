@@ -3,6 +3,9 @@ import { API_ROUTES } from '../config/routes';
 
 const authService = {
   sendOtp: payload => apiClient.post(API_ROUTES.auth.sendOtp, payload),
+  
+  resendOtp: payload =>
+    apiClient.post(API_ROUTES.auth.resendOtp, payload),
 
   verifyOtp: payload => apiClient.post(API_ROUTES.auth.verifyOtp, payload),
 

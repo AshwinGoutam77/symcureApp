@@ -6,6 +6,23 @@ import {fonts} from '../../theme';
 export default function AdviceSection({general}) {
   if (!general) return null;
 
+const formatDate = date => {
+  if (!date) return null;
+
+  const value = String(date).split('T')[0];
+  const [year, month, day] = value.split('-');
+
+  if (!year || !month || !day) return date;
+
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  return `${Number(day)} ${months[Number(month) - 1]} ${year}`;
+};
+
+
   const sections = [
     {
       title: 'General Advice',
@@ -20,7 +37,7 @@ export default function AdviceSection({general}) {
     {
       title: 'Follow-up',
       icon: 'calendar',
-      value: general.follow_up_date,
+       value: formatDate(general.follow_up_date),
     },
     {
       title: 'Next Review Plan',
@@ -33,6 +50,7 @@ export default function AdviceSection({general}) {
       value: general.private_notes,
     },
   ].filter(item => item.value);
+
 
   if (!sections.length) return null;
 

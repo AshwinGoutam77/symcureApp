@@ -5,219 +5,313 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import {colors, fonts} from '../../theme';
-import Button from '../../components/common/Button';
+import { WebView } from 'react-native-webview';
 import Feather from 'react-native-vector-icons/Feather';
 
-export default function DataPrivacyScreen({navigation, route}) {
-  const fromLogin = route?.params?.fromLogin;
+import { colors, fonts } from '../../theme';
+import { useLegalContentQuery } from '../../hooks/queries/useContentQueries';
+
+export default function DataPrivacyScreen({ navigation, route }) {
+  const slug = route?.params?.slug || 'privacy_policy';
+  const { data, isLoading, isError, error } = useLegalContentQuery(slug);
+  const content = data?.content;
+
   return (
     <View style={styles.container}>
+      {/* HEADER */}
       <LinearGradient
         colors={colors.gradient}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 0}}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
         style={styles.header}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => {
-            navigation.goBack();
-          }}>
-          <Feather name="arrow-left" size={22} color="#ffffffff" />
+          onPress={() => navigation.goBack()}>
+          <Feather
+            name="arrow-left"
+            size={22}
+            color="#fff"
+          />
         </TouchableOpacity>
 
-        <Text style={styles.title}>Your Data,{'\n'}Your Rights.</Text>
+        <Text style={styles.title}>
+          {content?.title || 'Your Data, Your Rights.'}
+        </Text>
 
         <Text style={styles.subtitle}>
-          Under the <Text style={styles.bold}>DPDP Act 2023</Text>, you have
-          full control over your health data.
+          {route?.params?.slug == "privacy_policy" ? 'Your privacy and control over your personal data.' :
+            'Your Terms and Conditions over your personal data.'}
         </Text>
       </LinearGradient>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}>
-        {/* CONTENT */}
-        <View style={styles.content}>
-          {/* Card 1 */}
-          <View style={[styles.card, styles.grey]}>
-            <Text style={styles.cardTitle}>What we collect</Text>
-            <Text style={styles.cardText}>
-              Name, phone, DOB, address, consultation history, uploaded reports.
-            </Text>
-          </View>
+      {/* CONTENT */}
+      {isLoading ? (
+        <View style={styles.center}>
+          <ActivityIndicator
+            size="large"
+            color={colors.primary}
+          />
 
-          {/* Card 2 */}
-          <View style={[styles.card, styles.green]}>
-            <Text style={styles.cardTitle}>How we protect it</Text>
-            <Text style={styles.cardText}>
-              AWS Mumbai (India). AES-256 encryption. Reports via 60-min
-              expiring signed URLs.
-            </Text>
-          </View>
-
-          {/* Card 3 */}
-          <View style={[styles.card, styles.beige]}>
-            <Text style={styles.cardTitle}>Retention period</Text>
-            <Text style={styles.cardText}>
-              Medical records kept 3 years minimum by law. Deletion anonymises
-              your identity.
-            </Text>
-          </View>
-
-          {/* Card 4 */}
-          <View style={[styles.card, styles.grey]}>
-            <Text style={styles.cardTitle}>Your rights</Text>
-            <Text style={styles.cardText}>
-              Access, correct, or request deletion anytime from Profile → Data &
-              Privacy.
-            </Text>
-          </View>
-
-          {/* WARNING */}
-          <View style={styles.warning}>
-            <Text style={styles.warningText}>
-              Medical Emergency? Do NOT use Symcure for emergencies. Call 112 or
-              go to the nearest hospital immediately. Symcure is for
-              non-emergency consultations only.
-            </Text>
-          </View>
+          <Text style={styles.loadingText}>
+            {route?.params?.slug === "privacy_policy" ? " Loading privacy policy..." : "Loading terms and condition..."}
+          </Text>
         </View>
-      </ScrollView>
+      ) : isError ? (
+        <View style={styles.center}>
+          <View style={styles.errorIcon}>
+            <Feather
+              name="alert-circle"
+              size={28}
+              color="#DC2626"
+            />
+          </View>
 
-      {/* <View style={styles.footer}>
-        <Button
-          title="Continue"
-          onPress={() => {
-            if (fromLogin) {
-              navigation.replace('Login'); // go back to login
-            } else {
-              navigation.replace('MainTabs'); // normal flow
-            }
+          <Text style={styles.errorTitle}>
+            {route?.params?.slug === "privacy_policy" ? "Unable to load privacy policy" : "Unable to load terms and condition"}
+          </Text>
+
+          <Text style={styles.errorText}>
+            {error?.message || 'Something went wrong. Please try again.'}
+          </Text>
+
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => navigation.replace('DataPrivacyScreen')}>
+            <Text style={styles.retryText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : content?.body ? (
+        <WebView
+          source={{
+            html: `
+              <!DOCTYPE html>
+              <html>
+                <head>
+                  <meta
+                    name="viewport"
+                    content="width=device-width, initial-scale=1.0"
+                  />
+
+                  <style>
+                    * {
+                      box-sizing: border-box;
+                    }
+
+                    body {
+                      margin: 0;
+                      padding: 20px 16px 40px;
+                      background: #F4F7FD;
+                      color: #1F2937;
+                      font-family:
+                        -apple-system,
+                        BlinkMacSystemFont,
+                        "Segoe UI",
+                        sans-serif;
+                      font-size: 15px;
+                      line-height: 1.65;
+                    }
+
+                    h1 {
+                      color: #111827;
+                      font-size: 24px;
+                      line-height: 1.3;
+                      margin: 0 0 18px;
+                    }
+
+                    h2 {
+                      color: #111827;
+                      font-size: 19px;
+                      line-height: 1.4;
+                      margin: 24px 0 10px;
+                    }
+
+                    h3 {
+                      color: #111827;
+                      font-size: 16px;
+                      margin: 20px 0 8px;
+                    }
+
+                    p {
+                      margin: 0 0 14px;
+                    }
+
+                    ul,
+                    ol {
+                      margin-top: 8px;
+                      margin-bottom: 16px;
+                      padding-left: 22px;
+                    }
+
+                    li {
+                      margin-bottom: 8px;
+                    }
+
+                    strong {
+                      color: #111827;
+                    }
+
+                    a {
+                      color: #2E76FF;
+                    }
+
+                    img {
+                      max-width: 100%;
+                      height: auto;
+                    }
+
+                    table {
+                      width: 100%;
+                      border-collapse: collapse;
+                      margin: 16px 0;
+                    }
+
+                    th,
+                    td {
+                      padding: 8px;
+                      border: 1px solid #E5E7EB;
+                      text-align: left;
+                    }
+
+                    blockquote {
+                      margin: 16px 0;
+                      padding: 12px 16px;
+                      background: #EEF2F7;
+                      border-left: 4px solid #2E76FF;
+                    }
+                  </style>
+                </head>
+
+                <body>
+                  ${content.body}
+                </body>
+              </html>
+            `,
           }}
+          style={styles.webview}
+          originWhitelist={['*']}
+          showsVerticalScrollIndicator={false}
+          javaScriptEnabled
+          domStorageEnabled
         />
-      </View> */}
+      ) : (
+        <View style={styles.center}>
+          <Feather
+            name="file-text"
+            size={32}
+            color="#94A3B8"
+          />
+
+          <Text style={styles.errorTitle}>
+            {route?.params?.slug === "privacy_policy" ? "Privacy Policy Unavailable" : "Terms and Condition Unavailable"}
+          </Text>
+
+          <Text style={styles.errorText}>
+            {route?.params?.slug === "privacy_policy" ? "No privacy policy content is currently available." : "No terms and condition content is currently available."}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F4F7FD',
   },
 
+  header: {
+    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingBottom: 24,
+  },
+
   backBtn: {
-    marginRight: 12,
-    padding: 6,
-    backgroundColor: 'rgba(251, 251, 251, 0.1)',
-    borderRadius: 10,
-    alignSelf: 'flex-start',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-
-  header: {
-    paddingTop: 70,
-    paddingHorizontal: 20,
-    paddingBottom: 30,
-  },
-
-  icon: {
-    fontSize: 28,
-    marginBottom: 10,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
 
   title: {
     fontFamily: fonts.bold,
     fontSize: 26,
-    color: '#fff',
     lineHeight: 34,
-    fontWeight: '700',
+    color: '#fff',
   },
 
   subtitle: {
-    fontFamily: fonts.regular,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 10,
+    fontFamily: fonts.medium,
+    color: 'rgba(255,255,255,0.82)',
+    marginTop: 8,
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: '600',
   },
 
-  bold: {
-    fontFamily: fonts.semiBold,
-    color: '#fff',
+  webview: {
+    flex: 1,
+    backgroundColor: '#F4F7FD',
   },
 
-  card: {
-    borderRadius: 18,
-    padding: 16,
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 30,
+  },
+
+  loadingText: {
+    marginTop: 12,
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+
+  errorIcon: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 14,
   },
 
-  grey: {
-    backgroundColor: '#EEF2F7',
-  },
-
-  green: {
-    backgroundColor: '#DFF3EA',
-  },
-
-  beige: {
-    backgroundColor: '#F5EBDD',
-  },
-
-  cardTitle: {
+  errorTitle: {
     fontFamily: fonts.semiBold,
-    fontSize: 16,
-    color: '#454545ff',
-    marginBottom: 6,
-    fontWeight: '700',
+    fontSize: 17,
+    color: colors.textPrimary,
+    textAlign: 'center',
   },
 
-  cardText: {
-    fontFamily: fonts.medium,
-    fontSize: 13,
+  errorText: {
+    marginTop: 7,
+    fontFamily: fonts.regular,
+    fontSize: 14,
+    lineHeight: 20,
     color: colors.textSecondary,
-    lineHeight: 18,
-    fontWeight: '600',
+    textAlign: 'center',
   },
 
-  warning: {
-    backgroundColor: '#FFE9E9',
-    borderRadius: 14,
-    padding: 14,
-    marginTop: 10,
+  retryButton: {
+    marginTop: 18,
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
   },
 
-  warningText: {
-    color: '#E53935',
-    fontFamily: fonts.medium,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    backgroundColor: '#F4F7FD',
-    borderTopWidth: 1,
-    borderTopColor: '#E6EBF5',
-    paddingBottom: 40,
-  },
-
-  scrollContent: {
-    paddingBottom: 120,
-  },
-
-  content: {
-    padding: 16,
-    marginTop: 20,
+  retryText: {
+    color: '#fff',
+    fontFamily: fonts.semiBold,
+    fontSize: 14,
   },
 });

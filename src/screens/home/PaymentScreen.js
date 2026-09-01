@@ -305,24 +305,24 @@ export default function PaymentScreen({ navigation, route }) {
 
   if (bookingContextLoading || bookingContextFetching) {
     return (
-     <>
-      <View style={styles.header}>
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.back}
-        >
-          <Feather name="arrow-left" size={19} color="#060D1F" />
-        </TouchableOpacity>
+      <>
+        <View style={styles.header}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.back}
+          >
+            <Feather name="arrow-left" size={19} color="#060D1F" />
+          </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>
-          {t('securePayment') || 'Confirm Booking'}
-        </Text>
-      </View>
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading payment details...</Text>
-      </View>
-     </>
+          <Text style={styles.headerTitle}>
+            {t('securePayment') || 'Confirm Booking'}
+          </Text>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.loadingText}>Loading payment details...</Text>
+        </View>
+      </>
     );
   }
 
@@ -400,7 +400,7 @@ export default function PaymentScreen({ navigation, route }) {
                 <Text style={styles.docName}>{doctor?.name || 'Doctor'}</Text>
 
                 <Text style={styles.docMeta}>
-                  {doctor?.qualification_specializations || ''},{' '}
+                  {doctor?.qualification_specializations || doctor?.specialization || ''},{' '}
                   {doctor?.qualifications}
                 </Text>
               </View>
@@ -421,12 +421,12 @@ export default function PaymentScreen({ navigation, route }) {
             <RowItem label="Clinic" value={doctor?.clinic?.name || '--'} />
 
             {/* FEE */}
-            <RowItem label="Consultation Fee" value={`₹${amount}`} />
+            <RowItem label="Consultation Fee" value={amount ? `₹${amount}` : 'Pay at Clinic'} />
 
-            <View style={styles.divider} />
+            {amount && <View style={styles.divider} />}
 
             {/* TOTAL */}
-            <RowItem label="Total" value={`₹${amount}`} bold blue />
+            {amount && <RowItem label="Total" value={`₹${amount}`} bold blue />}
           </View>
 
           {/* CLINIC DETAILS */}
@@ -461,21 +461,6 @@ export default function PaymentScreen({ navigation, route }) {
             />
           )}
 
-          {/* PAYMENT INFO */}
-          {/* <View style={styles.paymentInfo}>
-            <View style={styles.paymentInfoIcon}>
-              <Feather name="info" size={17} color="#2563EB" />
-            </View>
-
-            <View style={{ flex: 1 }}>
-              <Text style={styles.paymentInfoTitle}>Payment at Clinic</Text>
-
-              <Text style={styles.paymentInfoText}>
-                You will pay ₹{amount} at the clinic during your appointment.
-              </Text>
-            </View>
-          </View> */}
-
           {/* DATA SHARE INFO */}
           {dataShare?.already_granted === true && (
             <View style={styles.sharedInfo}>
@@ -492,7 +477,7 @@ export default function PaymentScreen({ navigation, route }) {
 
       {/* STICKY BOOK BUTTON */}
       <View style={styles.StickyBtn}>
-        <View style={styles.stickySummary}>
+        {amount && <View style={styles.stickySummary}>
           <View style={styles.stickyMethod}>
             <Feather name="credit-card" size={16} color="#000000ff" />
 
@@ -502,7 +487,7 @@ export default function PaymentScreen({ navigation, route }) {
             <Text style={styles.stickyLabel}>Total</Text>
             <Text style={styles.stickyAmount}>₹{amount}</Text>
           </View>
-        </View>
+        </View>}
 
         <Button
           title={isBooking ? 'Booking...' : 'Confirm Booking'}
@@ -657,7 +642,7 @@ const styles = StyleSheet.create({
 
   cardTitle: {
     fontFamily: fonts.semiBold,
-    marginBottom: 16,
+    marginBottom: 20,
     fontSize: 18,
     color: colors.textPrimary,
   },
@@ -897,7 +882,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
     paddingTop: 10,
-    paddingBottom: 20,
+    paddingBottom: 35,
   },
 
   stickySummary: {

@@ -1,4 +1,4 @@
-package com.symcurenew
+package com.symcure
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

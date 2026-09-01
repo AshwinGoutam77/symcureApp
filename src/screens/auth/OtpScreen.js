@@ -20,7 +20,10 @@ import {
 import { colors, fonts, spacing } from '../../theme';
 import Button from '../../components/common/Button';
 import Feather from 'react-native-vector-icons/Feather';
-import { useVerifyOtpMutation } from '../../hooks/queries/useAuthMutations';
+import {
+  useVerifyOtpMutation,
+  useResendOtpMutation,
+} from '../../hooks/queries/useAuthMutations';
 import { useDispatch } from 'react-redux';
 import {
   setSession,
@@ -30,13 +33,35 @@ import {
 
 export default function OtpScreen({ navigation, route }) {
   const dispatch = useDispatch();
-  const { phone, otpRequestId } = route.params || {};
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timer, setTimer] = useState(60);
+  const {
+  phone,
+  otpRequestId: initialOtpRequestId,
+  resendAvailableInSeconds = 30,
+} = route.params || {};
+  const OTP_LENGTH = 4;
+
+const [otp, setOtp] = useState(
+  Array(OTP_LENGTH).fill(''),
+);
+  const [otpRequestId, setOtpRequestId] = useState(
+  initialOtpRequestId,
+);
+
+const [timer, setTimer] = useState(
+  resendAvailableInSeconds,
+);
   const [error, setError] = useState('');
   const [profileModal, setProfileModal] = useState(false);
   const inputs = useRef([]);
-  const { mutateAsync: verifyOtp, isPending: loading } = useVerifyOtpMutation();
+  const {
+  mutateAsync: verifyOtp,
+  isPending: loading,
+} = useVerifyOtpMutation();
+
+const {
+  mutateAsync: resendOtp,
+  isPending: resending,
+} = useResendOtpMutation();
   const [verifyResponse, setVerifyResponse] = useState(null);
   const [profiles, setProfiles] = useState([]);
 
@@ -67,9 +92,9 @@ export default function OtpScreen({ navigation, route }) {
     if (error) {
       setError('');
     }
-    if (text && index < 5) {
-      inputs.current[index + 1]?.focus();
-    }
+    if (text && index < OTP_LENGTH - 1) {
+  inputs.current[index + 1]?.focus();
+}
   };
 
   const handleBackspace = (key, index) => {
@@ -91,11 +116,10 @@ export default function OtpScreen({ navigation, route }) {
   const validateOtp = () => {
     const otpValue = otp.join('');
 
-    if (otpValue.length !== 6) {
-      setError('Please enter complete 6-digit OTP');
-
-      return false;
-    }
+   if (otpValue.length !== OTP_LENGTH) {
+  setError(`Please enter complete ${OTP_LENGTH}-digit OTP`);
+  return false;
+}
 
     return true;
   };
@@ -110,14 +134,18 @@ export default function OtpScreen({ navigation, route }) {
     try {
       setError('');
 
-      const payload = {
-        mobile: phone,
-        otp: otpValue,
-      };
+if (!otpRequestId) {
+  setError(
+    'OTP session expired. Please request a new OTP.',
+  );
+  return;
+}
 
-      if (otpRequestId) {
-        payload.otp_request_id = otpRequestId;
-      }
+const payload = {
+  mobile: phone,
+  otp: otpValue,
+  otp_request_id: otpRequestId,
+};
 
       const response = await verifyOtp(payload);
       const data = response?.data;
@@ -128,16 +156,6 @@ export default function OtpScreen({ navigation, route }) {
       }
 
       await AsyncStorage.setItem('registration_phone', String(phone));
-
-      console.log('REGISTRATION PHONE SAVED:', phone);
-
-      if (data?.access_token) {
-        await AsyncStorage.setItem('access_token', data.access_token);
-      }
-
-      if (data?.refresh_token) {
-        await AsyncStorage.setItem('refresh_token', data.refresh_token);
-      }
 
       const basicDetailsRequired =
         data?.onboarding?.basic_details_required === true;
@@ -163,11 +181,26 @@ export default function OtpScreen({ navigation, route }) {
           );
         }
 
+        if (data?.access_token) {
+          await AsyncStorage.setItem('access_token', data.access_token);
+        }
+
+        if (data?.refresh_token) {
+          await AsyncStorage.setItem('refresh_token', data.refresh_token);
+        }
         await AsyncStorage.setItem('registration_phone', String(phone));
 
         dispatch(setSession(data));
 
         return;
+      } else {
+        if (data?.access_token) {
+          await AsyncStorage.setItem('access_token', data.access_token);
+        }
+
+        if (data?.refresh_token) {
+          await AsyncStorage.setItem('refresh_token', data.refresh_token);
+        }
       }
 
       // PROFILE COMPLETE
@@ -224,9 +257,7 @@ export default function OtpScreen({ navigation, route }) {
       console.log('MULTIPLE PROFILES - SHOW PROFILE MODAL');
 
       setProfiles(profilesFromApi);
-
       setVerifyResponse(data);
-
       setProfileModal(true);
     } catch (err) {
       console.log('====================================');
@@ -246,19 +277,104 @@ export default function OtpScreen({ navigation, route }) {
     }
   };
 
-  const handleResend = () => {
-    if (timer > 0 || loading) {
+const handleResend = async () => {
+  if (timer > 0 || loading || resending) {
+    return;
+  }
+
+  if (!otpRequestId) {
+    setError(
+      'OTP session expired. Please request a new OTP.',
+    );
+    return;
+  }
+
+  try {
+    setError('');
+
+    const response = await resendOtp({
+      mobile: phone,
+      otp_request_id: otpRequestId,
+    });
+
+    console.log(
+      'RESEND OTP RESPONSE:',
+      JSON.stringify(response, null, 2),
+    );
+
+    const newOtpRequestId =
+      response?.data?.otp_request_id ||
+      response?.otp_request_id;
+
+    if (!newOtpRequestId) {
+      setError(
+        'Unable to resend OTP. Please try again.',
+      );
       return;
     }
 
-    setTimer(60);
+    // IMPORTANT:
+    // Use the latest request ID for the next verification.
+    setOtpRequestId(newOtpRequestId);
 
-    setOtp(['', '', '', '', '', '']);
+    const cooldown =
+      response?.data?.resend_available_in_seconds ??
+      response?.resend_available_in_seconds ??
+      30;
 
-    setError('');
+    setTimer(cooldown);
+
+    setOtp(Array(OTP_LENGTH).fill(''));
 
     inputs.current[0]?.focus();
-  };
+  } catch (err) {
+    console.log(
+      'RESEND OTP ERROR:',
+      JSON.stringify(err, null, 2),
+    );
+
+    const errorCode =
+      err?.error?.code ||
+      err?.code;
+
+    if (errorCode === 'OTP_RESEND_COOLDOWN') {
+      const retryAfter =
+        err?.error?.details?.retry_after_seconds ??
+        err?.details?.retry_after_seconds ??
+        30;
+
+      setTimer(retryAfter);
+
+      setError(
+        `Please wait ${retryAfter} seconds before requesting another OTP.`,
+      );
+
+      return;
+    }
+
+    if (errorCode === 'OTP_INVALID') {
+      setError(
+        'This OTP session has expired. Please request a new OTP.',
+      );
+
+      return;
+    }
+
+    if (errorCode === 'OTP_SERVICE_UNAVAILABLE') {
+      setError(
+        'SMS service is temporarily unavailable. Please try again in a moment.',
+      );
+
+      return;
+    }
+
+    setError(
+      err?.error?.message ||
+        err?.message ||
+        'Unable to resend OTP. Please try again.',
+    );
+  }
+};
 
   const handleSelectProfile = async profile => {
     try {
@@ -321,9 +437,9 @@ export default function OtpScreen({ navigation, route }) {
 
             <TouchableOpacity
               style={styles.editPhone}
-              onPress={() =>  navigation.navigate('Login', {
-      phone: phone,
-    })}
+              onPress={() => navigation.navigate('Login', {
+                phone: phone,
+              })}
               activeOpacity={0.7}
             >
               <Text style={styles.bold}>Code sent to +91 {phone}</Text>
@@ -348,7 +464,9 @@ export default function OtpScreen({ navigation, route }) {
                   onKeyPress={({ nativeEvent }) =>
                     handleBackspace(nativeEvent.key, index)
                   }
-                  returnKeyType={index === 5 ? 'done' : 'next'}
+                  returnKeyType={
+  index === OTP_LENGTH - 1 ? 'done' : 'next'
+}
                   textContentType="oneTimeCode"
                   autoComplete="sms-otp"
                 />
@@ -377,7 +495,10 @@ export default function OtpScreen({ navigation, route }) {
             <Button
               title={loading ? 'Verifying...' : 'Verify & Continue'}
               onPress={handleVerify}
-              disabled={loading || otp.join('').length !== 6}
+              disabled={
+  loading ||
+  otp.join('').length !== OTP_LENGTH
+}
             />
           </View>
         </View>
@@ -435,8 +556,12 @@ export default function OtpScreen({ navigation, route }) {
                     <Text style={styles.profileRelation}>
                       {item.relationship === 'self'
                         ? 'Self'
-                        : item.relationship || 'Patient'}
-                      {item.age ? ` • ${item.age} yrs` : ''}
+                        : item.relationship
+                          ? item.relationship
+                            .replace(/_/g, ' ')
+                            .replace(/\b\w/g, char => char.toUpperCase())
+                          : 'Patient'}
+                      {item.age ? ` • ${item.age}` : ''}
                     </Text>
                   </View>
 
@@ -562,6 +687,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
 
     marginTop: spacing.lg,
+    paddingHorizontal: 50,
   },
 
   otpBox: {

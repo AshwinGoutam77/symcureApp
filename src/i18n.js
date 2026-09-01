@@ -41,8 +41,8 @@ const resources = {
       doctorName: 'Dr. Anita Sharma',
       generalPhysician: 'General Physician',
 
-      videoMode: 'Video · ₹{{price}}',
-      clinicMode: 'Clinic · ₹{{price}}',
+      videoMode: 'Video {{price}}',
+      clinicMode: 'Clinic {{price}}',
 
       selectDate: 'Select Date',
       morning: 'Morning',

@@ -27,8 +27,8 @@ import {
   useAddFamilyMemberMutation,
   useCompleteProfileMutation,
 } from '../../hooks/queries/useAuthMutations';
-import {useDispatch} from 'react-redux';
-import {clearFamilyMemberFlow, setActiveProfile, setAuthUser, setProfileComplete} from '../../store/authSlice';
+import { useDispatch } from 'react-redux';
+import { clearFamilyMemberFlow, setActiveProfile, setAuthUser, setProfileComplete } from '../../store/authSlice';
 
 export default function ProfileStep2({ navigation, route }) {
   const dispatch = useDispatch();
@@ -46,7 +46,7 @@ export default function ProfileStep2({ navigation, route }) {
     city: '',
     cityId: null,
     district: '',
-  tehsil: '',
+    tehsil: '',
     pincode: '',
     aadhaar: '',
     abha: '',
@@ -56,9 +56,10 @@ export default function ProfileStep2({ navigation, route }) {
   const [showCity, setShowCity] = useState(false);
 
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const [errors, setErrors] = useState({});
-const [profileResponse, setProfileResponse] = useState(null);
   const { data: statesResponse, isLoading: statesLoading } = useStatesQuery();
 
   const states = statesResponse?.data?.states || [];
@@ -129,13 +130,13 @@ const [profileResponse, setProfileResponse] = useState(null);
         full_name: step1Form.fullName,
         dob: convertDobToApiFormat(step1Form.dob),
         gender: step1Form.gender,
-        guardian_type: form.guardianType || undefined,
-        guardian_name: form.guardianName || undefined,
+        guardian_type: step1Form.guardianType || undefined,
+        guardian_name: step1Form.guardianName || undefined,
 
         ...(step1Form.email
           ? {
-              email: step1Form.email,
-            }
+            email: step1Form.email,
+          }
           : {}),
 
         // STEP 2
@@ -144,8 +145,8 @@ const [profileResponse, setProfileResponse] = useState(null);
           area: form.area,
           city_id: form.cityId,
           state_id: form.stateId,
-  district: form.district,
-  tehsil: form.tehsil,
+          district: form.district,
+          tehsil: form.tehsil,
           pin_code: form.pincode,
         },
 
@@ -168,10 +169,10 @@ const [profileResponse, setProfileResponse] = useState(null);
         payload.abha_no = abha;
       }
 
-      console.log(
-        'PROFILE COMPLETE PAYLOAD:',
-        JSON.stringify(payload, null, 2),
-      );
+      // console.log(
+      //   'PROFILE COMPLETE PAYLOAD:',
+      //   JSON.stringify(payload, null, 2),
+      // );
       // return
 
       let response;
@@ -180,80 +181,87 @@ const [profileResponse, setProfileResponse] = useState(null);
         // Family member
         payload.relationship = step1Form.relationship;
 
-        console.log('FAMILY MEMBER PAYLOAD:', {
-          payload,
-        });
+        // console.log('FAMILY MEMBER PAYLOAD:', {
+        //   payload,
+        // });
 
         response = await addFamilyMember(payload);
       } else {
         // Primary patient
         response = await completeProfile(payload);
       }
-//       if (response?.success) {
-//   setProfileResponse(response);
-//   setShowSuccess(true);
-//   return;
-// }
-if (response?.success) {
-  console.log('PROFILE CREATED SUCCESS');
+      //       if (response?.success) {
+      //   setProfileResponse(response);
+      //   setShowSuccess(true);
+      //   return;
+      // }
+      if (response?.success) {
+        console.log('PROFILE CREATED SUCCESS');
 
-  const newProfile = response?.data?.profile;
+        const newProfile = response?.data?.profile;
 
-  console.log(
-    'NEW PROFILE:',
-    JSON.stringify(newProfile, null, 2),
-  );
+        console.log(
+          'NEW PROFILE:',
+          JSON.stringify(newProfile, null, 2),
+        );
 
-  // -----------------------------------------
-  // SHOW SUCCESS MODAL FIRST
-  // -----------------------------------------
+        // -----------------------------------------
+        // SHOW SUCCESS MODAL FIRST
+        // -----------------------------------------
 
-  setShowSuccess(true);
+        setShowSuccess(true);
 
-  // -----------------------------------------
-  // UPDATE PROFILE STORAGE / REDUX
-  // -----------------------------------------
+        // -----------------------------------------
+        // UPDATE PROFILE STORAGE / REDUX
+        // -----------------------------------------
 
-  if (newProfile?.patient_account_id) {
-    const newPatientAccountId = String(
-      newProfile.patient_account_id,
-    );
+        if (newProfile?.patient_account_id) {
+          const newPatientAccountId = String(
+            newProfile.patient_account_id,
+          );
 
-    try {
-      await AsyncStorage.setItem(
-        'patient_account_id',
-        newPatientAccountId,
-      );
+          try {
+            await AsyncStorage.setItem(
+              'patient_account_id',
+              newPatientAccountId,
+            );
 
-      await AsyncStorage.setItem(
-        'active_profile',
-        JSON.stringify(newProfile),
-      );
+            await AsyncStorage.setItem(
+              'active_profile',
+              JSON.stringify(newProfile),
+            );
 
-      dispatch(
-        setActiveProfile(newProfile),
-      );
+            dispatch(
+              setActiveProfile(newProfile),
+            );
 
-      console.log(
-        'PATIENT ACCOUNT ID UPDATED:',
-        newPatientAccountId,
-      );
-    } catch (storageError) {
-      console.log(
-        'PROFILE STORAGE UPDATE ERROR:',
-        storageError,
-      );
-    }
-  }
+            console.log(
+              'PATIENT ACCOUNT ID UPDATED:',
+              newPatientAccountId,
+            );
+          } catch (storageError) {
+            console.log(
+              'PROFILE STORAGE UPDATE ERROR:',
+              storageError,
+            );
+          }
+        }
 
-  return;
-}
-      setErrors({
-        api:
-          response?.error?.message ||
-          response?.message ||
-          'Unable to create profile.',
-      });
+        return;
+      }
+      // setErrors({
+      //   api:
+      //     response?.error?.message ||
+      //     response?.message ||
+      //     'Unable to create profile.',
+      // });
+      const message =
+        response?.error?.message ||
+        response?.message ||
+        'Unable to create profile.';
+
+      setErrorMessage(message);
+      setShowError(true);
     } catch (error) {
       console.log('PROFILE API ERROR:', error);
       console.log('PROFILE API ERROR DATA:', error?.response?.data);
@@ -261,20 +269,29 @@ if (response?.success) {
       const apiError = apiData?.error;
       const validationErrors = apiData?.error?.data;
       if (validationErrors) {
-        console.log('PROFILE VALIDATION ERRORS:', validationErrors);
-        setErrors({
-          api: apiError?.message || 'Please check the entered details.',
-        });
+        console.log('PROFILE VALIDATION ERRORS:', apiError);
+        setErrorMessage(
+          apiError?.message || 'Please check the entered details.',
+        );
+        setShowError(true);
         return;
       }
 
-      setErrors({
-        api:
-          apiError?.message ||
-          apiData?.message ||
-          error?.message ||
-          'Unable to create profile.',
-      });
+      // setErrors({
+      //   api:
+      //     apiError?.message ||
+      //     apiData?.message ||
+      //     error?.message ||
+      //     'Unable to create profile.',
+      // });
+      const message =
+        apiError?.message ||
+        apiData?.message ||
+        error?.message ||
+        'Unable to create profile.';
+
+      setErrorMessage(message);
+      setShowError(true);
     }
   };
 
@@ -283,17 +300,32 @@ if (response?.success) {
       {/* HEADER */}
 
       <LinearGradient colors={colors.gradient}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Create Your Profile</Text>
+  <View style={styles.header}>
 
-          <Text style={styles.subtitle}>Step 2 of 2 — Address & Identity</Text>
+    <TouchableOpacity
+      style={styles.backButton}
+      onPress={() => navigation.goBack()}
+      activeOpacity={0.8}>
+      <Feather
+        name="arrow-left"
+        size={20}
+        color="#fff"
+      />
+    </TouchableOpacity>
 
-          <View style={styles.progress}>
-            <View style={[styles.bar, styles.active]} />
-            <View style={[styles.bar, styles.active]} />
-          </View>
-        </View>
-      </LinearGradient>
+    <Text style={styles.title}>Create Your Profile</Text>
+
+    <Text style={styles.subtitle}>
+      Step 2 of 2 — Address & Identity
+    </Text>
+
+    <View style={styles.progress}>
+      <View style={[styles.bar, styles.active]} />
+      <View style={[styles.bar, styles.active]} />
+    </View>
+
+  </View>
+</LinearGradient>
 
       <KeyboardAwareScrollView
         enableOnAndroid
@@ -381,39 +413,39 @@ if (response?.success) {
           </View>
 
           {/* DISTRICT + TEHSIL */}
-<View style={styles.row}>
-  <View style={{flex: 1}}>
-    <Input
-      label="DISTRICT (OPTIONAL)"
-      value={form.district}
-      onChangeText={text => handleChange('district', text)}
-      placeholder="District"
-    />
+          <View style={styles.row}>
+            <View style={{ flex: 1 }}>
+              <Input
+                label="DISTRICT (OPTIONAL)"
+                value={form.district}
+                onChangeText={text => handleChange('district', text)}
+                placeholder="District"
+              />
 
-    {errors.district && (
-      <Text style={styles.errorLabel}>
-        {errors.district}
-      </Text>
-    )}
-  </View>
+              {errors.district && (
+                <Text style={styles.errorLabel}>
+                  {errors.district}
+                </Text>
+              )}
+            </View>
 
-  <View style={{width: 12}} />
+            <View style={{ width: 12 }} />
 
-  <View style={{flex: 1}}>
-    <Input
-      label="TEHSIL (OPTIONAL)"
-      value={form.tehsil}
-      onChangeText={text => handleChange('tehsil', text)}
-      placeholder="Tehsil"
-    />
+            <View style={{ flex: 1 }}>
+              <Input
+                label="TEHSIL (OPTIONAL)"
+                value={form.tehsil}
+                onChangeText={text => handleChange('tehsil', text)}
+                placeholder="Tehsil"
+              />
 
-    {errors.tehsil && (
-      <Text style={styles.errorLabel}>
-        {errors.tehsil}
-      </Text>
-    )}
-  </View>
-</View>
+              {errors.tehsil && (
+                <Text style={styles.errorLabel}>
+                  {errors.tehsil}
+                </Text>
+              )}
+            </View>
+          </View>
 
           {/* PINCODE */}
 
@@ -467,7 +499,7 @@ if (response?.success) {
 
         {/* API ERROR */}
 
-        {errors.api && (
+        {/* {errors.api && (
           <Text
             style={[
               styles.errorLabel,
@@ -479,7 +511,7 @@ if (response?.success) {
           >
             {errors.api}
           </Text>
-        )}
+        )} */}
       </KeyboardAwareScrollView>
 
       {/* BUTTON */}
@@ -493,7 +525,6 @@ if (response?.success) {
       </View>
 
       {/* STATE MODAL */}
-
       {showState && (
         <View style={styles.modalOverlay}>
           <TouchableOpacity
@@ -530,7 +561,6 @@ if (response?.success) {
       )}
 
       {/* CITY MODAL */}
-
       {showCity && (
         <View style={styles.modalOverlay}>
           <TouchableOpacity
@@ -565,7 +595,6 @@ if (response?.success) {
       )}
 
       {/* SUCCESS */}
-
       {showSuccess && (
         <View style={styles.centerModalOverlay}>
           <View style={styles.centerModalContainer}>
@@ -581,20 +610,54 @@ if (response?.success) {
             </Text>
 
             <Button
-  title="Continue"
-  containerStyle={{
-    width: '100%',
-  }}
- onPress={() => {
-  setShowSuccess(false);
+              title="Continue"
+              containerStyle={{
+                width: '100%',
+              }}
+              onPress={() => {
+                setShowSuccess(false);
 
-  if (existingAccount) {
-    dispatch(clearFamilyMemberFlow());
-  }
+                if (existingAccount) {
+                  dispatch(clearFamilyMemberFlow());
+                }
 
-  dispatch(setProfileComplete());
-}}
-/>
+                dispatch(setProfileComplete());
+              }}
+            />
+          </View>
+        </View>
+      )}
+
+      {/* ERROR MODAL */}
+      {showError && (
+        <View style={styles.centerModalOverlay}>
+          <View style={styles.centerModalContainer}>
+            <View style={styles.iconWrap}>
+              <Feather
+                name="alert-circle"
+                size={70}
+                color="#EF4444"
+              />
+            </View>
+
+            <Text style={styles.errorTitle}>
+              Unable to Create Profile
+            </Text>
+
+            <Text style={styles.errorDesc}>
+              {errorMessage}
+            </Text>
+
+            <Button
+              title="OK"
+              containerStyle={{
+                width: '100%',
+              }}
+              onPress={() => {
+                setShowError(false);
+                setErrorMessage('');
+              }}
+            />
           </View>
         </View>
       )}
@@ -641,6 +704,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
+
+  backButton: {
+  width: 40,
+  height: 40,
+  borderRadius: 12,
+  backgroundColor: 'rgba(255,255,255,0.15)',
+  borderWidth: 1,
+  borderColor: 'rgba(255,255,255,0.25)',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginBottom: 16,
+},
 
   title: {
     fontFamily: fonts.bold,
@@ -771,7 +846,7 @@ const styles = StyleSheet.create({
 
   successTitle: {
     fontSize: 20,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     color: colors.textPrimary,
     marginBottom: 8,
     textAlign: 'center',
@@ -779,7 +854,21 @@ const styles = StyleSheet.create({
 
   successDesc: {
     fontSize: 14,
-    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+
+  errorTitle: {
+    fontSize: 20,
+    fontFamily: fonts.bold,
+    color: colors.textPrimary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+
+  errorDesc: {
+    fontSize: 14,
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 20,

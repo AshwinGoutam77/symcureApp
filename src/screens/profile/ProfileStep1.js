@@ -1,12 +1,13 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 /* eslint-disable react-native/no-inline-styles */
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useRef} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Keyboard,
 } from 'react-native';
 import { colors, fonts } from '../../theme';
 import Button from '../../components/common/Button';
@@ -19,6 +20,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useSelector} from 'react-redux';
 
 export default function ProfileStep1({navigation, route}) {
+  const scrollRef = useRef(null);
 const {
   existingAccount: routeExistingAccount = false,
   patientAccountId = null,
@@ -42,8 +44,8 @@ const [form, setForm] = useState({
   fullName: '',
   dob: '',
   gender: '',
-  guardianType: '',
-  guardianName: '',
+  guardianType:'',
+  guardianName:'',
   email: '',
   relationship: '',
   emergencyName: '',
@@ -131,16 +133,19 @@ useEffect(() => {
     let newErrors = {};
 
     if (!form.fullName.trim()) {
+      scrollRef.current?.scrollToPosition(0, 0, true);
       newErrors.fullName = 'Full name is required';
     }
 
     if (!form.dob) {
+      scrollRef.current?.scrollToPosition(0, 180, true);
       newErrors.dob = 'Date of birth is required';
     } else if (!/^\d{2}\/\d{2}\/\d{4}$/.test(form.dob)) {
       newErrors.dob = 'Format should be DD/MM/YYYY';
     }
 
     if (!form.gender) {
+      scrollRef.current?.scrollToPosition(0, 180, true);
       newErrors.gender = 'Gender is required';
     }
 
@@ -198,6 +203,7 @@ useEffect(() => {
       </LinearGradient>
 
       <KeyboardAwareScrollView
+      ref={scrollRef}
         enableOnAndroid
         extraScrollHeight={20}
         keyboardShouldPersistTaps="handled"
@@ -218,10 +224,11 @@ useEffect(() => {
           </View>
 
           <Input
-            label="FULL NAME *"
+            label="FULL NAME"
             placeholder="Full name"
             value={form.fullName}
             onChangeText={text => handleChange('fullName', text)}
+            required
           />
           {errors.fullName && (
             <Text style={styles.errorLabel}>{errors.fullName}</Text>
@@ -230,7 +237,7 @@ useEffect(() => {
           <Input
             keyboardType="number-pad"
             maxLength={10}
-            label="PHONE NUMBER *"
+            label="PHONE NUMBER"
             placeholder="10-digit number"
             value={form.phone}
             editable={false}
@@ -238,6 +245,7 @@ useEffect(() => {
             onChangeText={text =>
               handleChange('phone', text.replace(/[^0-9]/g, '').slice(0, 10))
             }
+            required
           />
           {errors.phone && (
             <Text style={styles.errorLabel}>{errors.phone}</Text>
@@ -250,13 +258,14 @@ useEffect(() => {
             >
               <View pointerEvents="none">
                 <Input
-                  label="RELATIONSHIP *"
+                  label="RELATIONSHIP"
                   value={
                     relationshipOptions.find(x => x.value === form.relationship)
                       ?.label || ''
                   }
                   placeholder="Select Relationship"
                   editable={false}
+            required
                 />
 
                 {errors.relationship && (
@@ -271,10 +280,11 @@ useEffect(() => {
               <TouchableOpacity activeOpacity={1} onPress={() => setOpen(true)}>
                 <View pointerEvents="none">
                   <Input
-                    label="DATE OF BIRTH *"
+                    label="DATE OF BIRTH"
                     value={form.dob}
                     placeholder="DD/MM/YYYY"
                     editable={false}
+            required
                   />
                 </View>
               </TouchableOpacity>
@@ -289,14 +299,15 @@ useEffect(() => {
             <View style={{ flex: 1 }}>
               <TouchableOpacity
                 activeOpacity={1}
-                onPress={() => setShowGenderModal(true)}
+                onPress={() => { Keyboard.dismiss(); setShowGenderModal(true)}}
               >
                 <View pointerEvents="none">
                   <Input
-                    label="GENDER *"
+                    label="GENDER"
                     value={form.gender}
                     placeholder="Select"
                     editable={false}
+            required
                   />
                 </View>
               </TouchableOpacity>

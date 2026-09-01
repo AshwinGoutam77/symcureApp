@@ -204,18 +204,18 @@ export default function SettingsScreen({ navigation }) {
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}
-          >
-            <Feather name="arrow-left" size={23} color="#fff" />
-          </TouchableOpacity>
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => navigation.goBack()}
+              activeOpacity={0.7}
+            >
+              <Feather name="arrow-left" size={23} color="#fff" />
+            </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>Settings</Text>
-        </View>
+            <Text style={styles.headerTitle}>Settings</Text>
+          </View>
         </View>
       </LinearGradient>
 
@@ -227,15 +227,23 @@ export default function SettingsScreen({ navigation }) {
         }}
       >
         {/* ACCOUNT */}
-        <View style={styles.card}>
-          <Text style={styles.heading}>Account</Text>
+<View style={styles.card}>
+  <Text style={styles.heading}>Account</Text>
 
-          <MenuRow
-            icon="users"
-            title="Manage Profiles"
-            onPress={() => setProfileModal(true)}
-          />
-        </View>
+  <MenuRow
+    icon="users"
+    title="Manage Profiles"
+    onPress={() => setProfileModal(true)}
+  />
+
+  <MenuRow
+    icon="trash-2"
+    title="Delete Account"
+    onPress={() =>
+      navigation.navigate('DeleteAccountScreen')
+    }
+  />
+</View>
 
         {/* NOTIFICATIONS */}
         <View style={styles.card}>
@@ -304,25 +312,27 @@ export default function SettingsScreen({ navigation }) {
 
         {/* PRIVACY */}
         <View style={styles.card}>
-          <Text style={styles.heading}>Privacy</Text>
+          <Text style={styles.heading}>Privacy and Terms</Text>
 
           <MenuRow
             icon="shield"
             title="Privacy & Data"
-            onPress={() => navigation.navigate('DataPrivacyScreen')}
+            onPress={() =>
+              navigation.navigate('DataPrivacyScreen', {
+                slug: 'privacy_policy',
+              })
+            }
           />
-        </View>
-
-        {/* SUPPORT */}
-        <View style={styles.card}>
-          <Text style={styles.heading}>Support</Text>
 
           <MenuRow
             icon="help-circle"
-            title="Help & Support"
-            onPress={() => navigation.navigate('HelpSupportScreen')}
+            title="Terms and Condition"
+            onPress={() =>
+              navigation.navigate('DataPrivacyScreen', {
+                slug: 'terms',
+              })
+            }
           />
-
         </View>
 
         {/* ABOUT */}

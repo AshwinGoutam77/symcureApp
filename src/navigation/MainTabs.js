@@ -1,8 +1,9 @@
 /* eslint-disable react/no-unstable-nested-components */
 
 import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import Feather from 'react-native-vector-icons/Feather';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
 import HomeScreen from '../screens/home/HomeScreen';
 import AppointmentsScreen from '../screens/appointment/AppointmentScreen';
@@ -12,12 +13,14 @@ import ProfileScreen from '../screens/profile/ProfileScreen';
 const Tab = createBottomTabNavigator();
 
 export default function MainTabs() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
+      screenOptions={({route}) => ({
         headerShown: false,
 
-        tabBarIcon: ({ color }) => {
+        tabBarIcon: ({color}) => {
           let iconName;
 
           switch (route.name) {
@@ -58,9 +61,9 @@ export default function MainTabs() {
         tabBarInactiveTintColor: '#7A879E',
 
         tabBarStyle: {
-          height: 90,
+          height: 70 + insets.bottom,
           paddingTop: 5,
-          paddingBottom: 8,
+          paddingBottom: Math.max(insets.bottom, 8),
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#E8EDF3',

@@ -21,6 +21,7 @@ import {
 } from '../../hooks/queries/useAppoitmentQueries';
 import CancelAppointmentModal from '../../components/CancelAppointmentModal';
 import { useQueryClient } from '@tanstack/react-query';
+import { DoctorAvatar } from '../../components/common/DoctorAvtar'
 
 const TABS = ['Upcoming', 'Completed', 'Cancelled', 'All'];
 
@@ -41,6 +42,9 @@ function getStatusText(status) {
     case 'no_show':
       return 'No Show';
 
+    case 'no_show':
+      return 'No Show';
+
     default:
       return 'Unknown';
   }
@@ -51,27 +55,37 @@ function getStatusStyle(status) {
     case 'scheduled':
       return {
         backgroundColor: '#EEF4FF',
+        color: '#2563EB',
       };
 
     case 'reschedule_requested':
       return {
         backgroundColor: '#FFF4E5',
+        color: '#D97706',
       };
 
     case 'completed':
       return {
         backgroundColor: '#E6F7EF',
+        color: '#059669',
       };
 
     case 'cancelled':
-    case 'no_show':
       return {
         backgroundColor: '#FFE9E9',
+        color: '#DC2626',
+      };
+
+    case 'no_show':
+      return {
+        backgroundColor: '#F3F0E0',
+        color: '#8A7A24',
       };
 
     default:
       return {
         backgroundColor: '#EEF2F7',
+        color: '#64748B',
       };
   }
 }
@@ -81,9 +95,6 @@ function AppointmentCard({
   navigation,
   setSelectedAppointment,
   setShowCancelModal,
-  reason,
-  showCancelModal,
-  selectedAppointment,
 }) {
   const { t } = useTranslation();
 
@@ -129,7 +140,6 @@ function AppointmentCard({
 
   const startTime = formatTime(item?.start_at);
   const endTime = formatTime(item?.end_at);
-
   const timeRange = `${startTime} - ${endTime}`;
 
   return (
@@ -141,17 +151,25 @@ function AppointmentCard({
       }
       style={[
         styles.card,
-        item?.status === 'scheduled' && styles.blueBorder,
-        item?.status === 'reschedule_requested' && styles.blueBorder,
-        item?.status === 'cancelled' && styles.redBorder,
+        item?.status === 'scheduled' && styles.scheduledBorder,
+        item?.status === 'reschedule_requested' &&
+        styles.rescheduleBorder,
+        item?.status === 'completed' &&
+        styles.completedBorder,
+        item?.status === 'cancelled' &&
+        styles.cancelledBorder,
+        item?.status === 'no_show' &&
+        styles.noShowBorder,
       ]}
     >
       {/* HEADER */}
       <View style={styles.row}>
         {/* AVATAR */}
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials}</Text>
-        </View>
+        {/* <View style={styles.avatar}>
+          <Text style={styles.avatarText}><DoctorAvatar doctor={doctor}/></Text>
+        </View> */}
+
+        <DoctorAvatar doctor={doctor} />
 
         {/* DOCTOR INFO */}
         <View style={{ flex: 1 }}>
@@ -159,7 +177,7 @@ function AppointmentCard({
 
           <View style={styles.row}>
             <Text style={styles.meta} numberOfLines={1}>
-              {doctor?.qualification_specializations || 'Specialist'},{' '}
+              {doctor?.qualification_specializations || doctor?.specialization || 'Specialist'},{' '}
               {doctor?.qualifications}
             </Text>
           </View>
@@ -268,18 +286,20 @@ function AppointmentCard({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.btnBase, styles.primaryBtn]}
+            style={[styles.btnBase, styles.primaryBtn, !item?.prescription_id && styles.disabledBtn]}
+            disabled={!item?.prescription_id}
             onPress={() =>
               navigation.navigate('PrescriptionDetail', {
-                prescriptionId: doctor.prescription_id,
+                prescriptionId: item?.prescription_id,
+                doctorId: item.doctor.doctor_id
               })
             }
           >
             <Text
-              style={{
-                color: '#fff',
+              style={[{
+                color: !item?.prescription_id ? '#00000' : '#fff',
                 fontWeight: '700',
-              }}
+              }]}
             >
               View Prescription
             </Text>
@@ -534,14 +554,40 @@ const styles = StyleSheet.create({
 
   card: {
     backgroundColor: '#fff',
-    borderRadius: 18,
+    borderRadius: 14,
     padding: 14,
     marginBottom: 12,
   },
 
-  // liveBorder: { borderLeftWidth: 4, borderLeftColor: '#22C55E' },
-  // blueBorder: { borderLeftWidth: 4, borderLeftColor: colors.darkPrimary },
-  // redBorder: { borderLeftWidth: 4, borderLeftColor: '#EF4444' },
+  liveBorder: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#22C55E',
+  },
+
+  scheduledBorder: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#2563EB',
+  },
+
+  rescheduleBorder: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#D97706',
+  },
+
+  completedBorder: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#059669',
+  },
+
+  cancelledBorder: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#DC2626',
+  },
+
+  noShowBorder: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#8A7A24',
+  },
 
   row: {
     flexDirection: 'row',
@@ -586,7 +632,7 @@ const styles = StyleSheet.create({
 
   type: {
     marginLeft: 5,
-    fontSize: 13,
+    fontSize: 12,
     color: colors.darkPrimary,
     fontFamily: fonts.semiBold,
   },
@@ -594,13 +640,16 @@ const styles = StyleSheet.create({
   timeRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 2,
     marginTop: 10,
     marginLeft: 53,
+    paddingRight: 10,
   },
 
   time: {
     marginLeft: 4,
-    fontSize: 13,
+    fontSize: 12,
     color: colors.textPrimary,
     fontFamily: fonts.semiBold,
   },
@@ -676,6 +725,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     fontFamily: fonts.semiBold,
+  },
+
+  disabledBtn: {
+    backgroundColor: '#E5E7EB',
+    borderColor: '#E5E7EB',
+    opacity: 0.7,
   },
 
   refundBox: {

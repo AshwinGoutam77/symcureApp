@@ -1,10 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const ACTIVE_PROFILE_KEY = 'active_profile';
-const ACTIVE_PROFILE_ID_KEY = 'patient_account_id';
+const ACTIVE_PROFILE_ID =
+  'patient_account_id';
+
+const ACTIVE_PROFILE =
+  'active_profile';
 
 const activeProfileService = {
-  async setProfile(profile) {
+  setProfile: async profile => {
     if (!profile?.patient_account_id) {
       throw new Error(
         'Invalid patient profile.',
@@ -13,26 +16,28 @@ const activeProfileService = {
 
     await AsyncStorage.multiSet([
       [
-        ACTIVE_PROFILE_ID_KEY,
-        String(profile.patient_account_id),
+        ACTIVE_PROFILE_ID,
+        String(
+          profile.patient_account_id,
+        ),
       ],
       [
-        ACTIVE_PROFILE_KEY,
+        ACTIVE_PROFILE,
         JSON.stringify(profile),
       ],
     ]);
   },
 
-  async getProfileId() {
+  getProfileId: async () => {
     return AsyncStorage.getItem(
-      ACTIVE_PROFILE_ID_KEY,
+      ACTIVE_PROFILE_ID,
     );
   },
 
-  async getProfile() {
+  getProfile: async () => {
     const value =
       await AsyncStorage.getItem(
-        ACTIVE_PROFILE_KEY,
+        ACTIVE_PROFILE,
       );
 
     if (!value) {
@@ -46,10 +51,10 @@ const activeProfileService = {
     }
   },
 
-  async clear() {
+  clear: async () => {
     await AsyncStorage.multiRemove([
-      ACTIVE_PROFILE_KEY,
-      ACTIVE_PROFILE_ID_KEY,
+      ACTIVE_PROFILE_ID,
+      ACTIVE_PROFILE,
     ]);
   },
 };

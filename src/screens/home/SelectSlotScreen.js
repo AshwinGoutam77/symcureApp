@@ -117,11 +117,6 @@ export default function SelectSlotScreen({ navigation, route }) {
   });
 
   const clinicSlots = slotsData?.data?.slots || [];
-
-  // console.log('====================================');
-  // console.log('doctorDetail', slotsData?.data?.clinic_fee);
-  // console.log('====================================');
-
   const clinicFee = slotsData?.data?.clinic_fee ?? null;
 
   const morningSlots = [
@@ -144,9 +139,11 @@ export default function SelectSlotScreen({ navigation, route }) {
 
   const [selectedClinicSlot, setSelectedClinicSlot] = useState(null);
   const [showConsentModal, setShowConsentModal] = useState(false);
-  // console.log('====================================');
-  // console.log('selectedClinicSlot', selectedClinicSlot);
-  // console.log('====================================');
+
+  const clinicFeeValue =
+    doctorDetail?.clinic_fee ??
+    doctorDetail?.consultation_options?.clinic?.fee ??
+    clinicFee;
 
   return (
     <View style={styles.container}>
@@ -163,7 +160,7 @@ export default function SelectSlotScreen({ navigation, route }) {
           <View>
             <Text style={styles.title}>{t('selectSlot')}</Text>
             <Text style={styles.sub}>
-              {doctorDetail?.name} · {doctorDetail?.qualification_specializations} · {doctorDetail?.qualifications}
+              {doctorDetail?.name} · {doctorDetail?.qualification_specializations || doctorDetail?.specialization} · {doctorDetail?.qualifications}
             </Text>
           </View>
         </View>
@@ -200,8 +197,11 @@ export default function SelectSlotScreen({ navigation, route }) {
             >
               {t('clinicMode', {
                 price:
-                  doctorDetail?.clinic_fee ||
-                  doctorDetail?.consultation_options?.clinic.fee || clinicFee || 0
+                  clinicFeeValue !== null &&
+                    clinicFeeValue !== undefined &&
+                    clinicFeeValue !== ''
+                    ? `₹${clinicFeeValue}`
+                    : '',
               })}
             </Text>
           </TouchableOpacity>
@@ -378,7 +378,7 @@ export default function SelectSlotScreen({ navigation, route }) {
                 ? '₹499'
                 : clinicFee !== null
                   ? `₹${clinicFee}`
-                  : '—'}
+                  : ''}
             </Text>
           </View>
 
@@ -848,13 +848,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2563EB',
+    borderColor: colors.darkPrimary,
     marginTop: 14,
     marginBottom: 14,
   },
 
   skipText: {
-    color: '#2563EB',
+    color: colors.darkPrimary,
     fontSize: 15,
     fontFamily: fonts.semiBold,
   },

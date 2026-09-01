@@ -8,6 +8,12 @@ export const useSendOtpMutation = () => {
   });
 };
 
+export const useResendOtpMutation = () => {
+  return useMutation({
+    mutationFn: payload => authService.resendOtp(payload),
+  });
+};
+
 export const useVerifyOtpMutation = () => {
   return useMutation({
     mutationFn: payload => authService.verifyOtp(payload),

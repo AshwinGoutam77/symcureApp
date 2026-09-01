@@ -127,16 +127,16 @@ export default function HomeScreen({ navigation }) {
   }, [opacity, scale]);
 
   const handleRefresh = async () => {
-  try {
-    await Promise.all([
-      refetchDashboard(),
-      refetchProfiles(),
-      refetchActiveProfile(),
-    ]);
-  } catch (error) {
-    console.log('HOME REFRESH ERROR:', error);
-  }
-};
+    try {
+      await Promise.all([
+        refetchDashboard(),
+        refetchProfiles(),
+        refetchActiveProfile(),
+      ]);
+    } catch (error) {
+      console.log('HOME REFRESH ERROR:', error);
+    }
+  };
 
   if (isDashboardLoading) {
     return (
@@ -348,9 +348,9 @@ export default function HomeScreen({ navigation }) {
 
                   <Text style={styles.docSub} numberOfLines={1}>
                     {(upcomingAppointment?.doctor
-                      ?.qualification_specializations || 'Specialist') +
+                      ?.qualification_specializations || upcomingAppointment?.doctor?.specialization || 'Specialist') +
                       ', ' +
-                      upcomingAppointment?.doctor?.qualifications}
+                      (upcomingAppointment?.doctor?.qualifications || '')}
                   </Text>
 
                   <View style={styles.metaRow}>
@@ -372,8 +372,8 @@ export default function HomeScreen({ navigation }) {
 
                     <Text style={styles.docSub}>
                       {formatDate(upcomingAppointment?.date)}
-                      {upcomingAppointment?.time_label
-                        ? ` • ${upcomingAppointment.time_label}`
+                      {upcomingAppointment?.slot_text
+                        ? ` • ${upcomingAppointment.slot_text}`
                         : ''}
                     </Text>
                   </View>
@@ -434,11 +434,11 @@ export default function HomeScreen({ navigation }) {
 
       <View style={styles.container}>
         <RefreshableScrollView
-  style={styles.content}
-  contentContainerStyle={{paddingBottom: 100}}
-  showsVerticalScrollIndicator={false}
-  onRefresh={handleRefresh}
->
+          style={styles.content}
+          contentContainerStyle={{ paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+          onRefresh={handleRefresh}
+        >
           {/* Recently Consulted */}
           <View>
             <View style={styles.sectionHeader}>
@@ -450,7 +450,7 @@ export default function HomeScreen({ navigation }) {
                 const doctor = item?.doctor;
                 const doctorName = doctor?.name || 'Doctor';
                 const specialization = [
-                  doctor?.qualification_specializations || 'Doctor',
+                  doctor?.qualification_specializations || doctor?.specialization ||  'Doctor',
                   doctor?.qualifications,
                 ]
                   .filter(Boolean)
@@ -489,7 +489,7 @@ export default function HomeScreen({ navigation }) {
 
                           <Text style={styles.visitText}>
                             {formatDate(item?.date)}
-                            {item?.time_label ? `, ${item.time_label}` : ''}
+                            {item?.slot_text ? `, ${item.slot_text}` : ''}
                           </Text>
                         </View>
                       </View>
@@ -500,7 +500,7 @@ export default function HomeScreen({ navigation }) {
                       </View>
                     </View>
 
-                    <View style={[styles.actionRow, { gap: 10 }]}>
+                    <View style={[styles.actionRow, { gap: 2 }]}>
                       {/* DIAGNOSIS */}
                       {item?.diagnosis ? (
                         <View style={styles.infoRow}>
@@ -542,8 +542,9 @@ export default function HomeScreen({ navigation }) {
                     <View style={styles.actionRow}>
                       {/* BOOK AGAIN */}
                       <TouchableOpacity
-                        style={styles.bookBtn}
+                        style={[styles.bookBtn, !doctor?.is_bookable && styles.disabled]}
                         activeOpacity={0.8}
+                        disabled={!doctor?.is_bookable}
                         onPress={() =>
                           navigation.navigate('SelectSlotScreen', {
                             selected:
@@ -568,7 +569,8 @@ export default function HomeScreen({ navigation }) {
                         activeOpacity={0.8}
                         onPress={() =>
                           navigation.navigate('PrescriptionDetail', {
-                            appointmentId: item?.appointment_id,
+                            prescriptionId: item?.prescription_id,
+                            doctorId: item.doctor.doctor_id
                           })
                         }
                       >
@@ -1180,6 +1182,10 @@ const styles = StyleSheet.create({
     gap: 10,
   },
 
+  disabled: {
+    backgroundColor: '#2e77ff8b',
+  },
+
   bookText: {
     color: '#fff',
     textAlign: 'center',
@@ -1222,7 +1228,7 @@ const styles = StyleSheet.create({
   },
 
   visitText: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#000000ff',
     marginLeft: 5,
     fontFamily: fonts.semiBold,
@@ -1253,6 +1259,7 @@ const styles = StyleSheet.create({
 
   actionRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
   },
 
   typeChip: {

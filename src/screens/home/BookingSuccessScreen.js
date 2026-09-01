@@ -214,11 +214,11 @@ export default function BookingSuccessScreen({ navigation, route }) {
 
             {/* CONFIRMED BADGE */}
 
-            <View style={styles.confirmedBadge}>
+            {/* <View style={styles.confirmedBadge}>
               <Feather name="check" size={13} color="#16A34A" />
 
               <Text style={styles.confirmedText}>Confirmed</Text>
-            </View>
+            </View> */}
           </View>
 
           <View style={styles.divider} />
@@ -288,11 +288,11 @@ export default function BookingSuccessScreen({ navigation, route }) {
             </Text>
           </View>
 
-          <View style={styles.bookingItem}>
+         {amount && <View style={styles.bookingItem}>
             <Text style={styles.bookingLabel}>Amount</Text>
 
             <Text style={styles.bookingValue}>₹{amount ?? 0}</Text>
-          </View>
+          </View>}
 
           <View style={styles.bookingItem}>
             <Text style={styles.bookingLabel}>Payment</Text>

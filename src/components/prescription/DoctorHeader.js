@@ -1,23 +1,32 @@
 import React from 'react';
-import {View, Text, StyleSheet} from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 
 import Feather from 'react-native-vector-icons/Feather';
-import {colors, fonts} from '../../theme';
+import { colors, fonts } from '../../theme';
+import { DoctorAvatar } from '../common/DoctorAvtar';
 
-export default function DoctorHeader({prescription}) {
+export default function DoctorHeader({ prescription }) {
+  console.log('prescription', prescription);
+
   return (
     <View style={styles.card}>
-      <View style={styles.avatar}>
+      {/* <View style={styles.avatar}>
         <Text style={styles.avatarText}>DR</Text>
-      </View>
+      </View> */}
+      <DoctorAvatar doctor={prescription?.doctor} />
 
-      <View style={{flex: 1}}>
+      <View style={{ flex: 1 }}>
         <Text style={styles.name}>{prescription?.digital_signature_text}</Text>
 
-        <Text style={styles.sub}>Prescription No.</Text>
-
-        <Text style={styles.rx}>{prescription?.prescription_no}</Text>
-      </View>
+        <Text style={styles.rx}>
+          {[
+            prescription?.doctor?.qualification_specializations,
+            prescription?.doctor?.specialization,
+            prescription?.doctor?.qualifications,
+          ]
+            .filter(Boolean)
+            .join(', ') || '-'}
+        </Text></View>
     </View>
   );
 }
@@ -62,9 +71,7 @@ const styles = StyleSheet.create({
   },
 
   rx: {
-    // marginTop: 2,
-    color: colors.primary,
-    fontFamily: fonts.bold,
-    fontSize: 15,
+    fontFamily: fonts.medium,
+    fontSize: 12,
   },
 });

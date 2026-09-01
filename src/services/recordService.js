@@ -14,6 +14,14 @@ const recordService = {
       params,
     }),
 
+    getPrescriptionPdfFormat: async doctorId => {
+  const response = await apiClient.get(
+    `/patient/doctors/${doctorId}/prescription-pdf-format`,
+  );
+
+  return response.data;
+},
+
   uploadReport: formData =>
     apiClient.post('/patient/reports', formData, {
       headers: {

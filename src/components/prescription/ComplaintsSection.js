@@ -16,16 +16,14 @@ export default function ComplaintsSection({complaints}) {
         {complaints.map((item, index) => (
           <View key={index}>
             <View style={{flex: 1}}>
-              <Text style={styles.name}>{item.symptom_name_snapshot}</Text>
+              <Text style={styles.name}>{item.symptom_name_snapshot} -  {!!item.location_side_label && (
+                <Text style={styles.side}>{item.location_side_label}</Text>
+              )}</Text>
 
             <View style={[styles.row, {alignItems: 'center'}]}>
                 <Text style={styles.duration}>
                 {item.duration_value} {item.duration_unit_label}
               </Text>
-
-              {!!item.location_side_label && (
-                <Text style={styles.side}>{item.location_side_label}</Text>
-              )}
             </View>
             </View>
           </View>
@@ -78,8 +76,7 @@ const styles = StyleSheet.create({
   },
 
   side: {
-    fontSize: 12,
-    color: colors.primary,
+    fontSize: 15,
     fontFamily: fonts.semiBold,
   },
 });

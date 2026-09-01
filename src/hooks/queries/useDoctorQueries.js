@@ -15,7 +15,8 @@ export const useDoctorsSearchQuery = params => {
     queryKey: ['doctors-search', params],
     queryFn: () => doctorService.searchDoctors(params),
     enabled: hasSearch,
-    staleTime: 30000,
+    // staleTime: 30000,
+    staleTime: 0,
   });
 };
 

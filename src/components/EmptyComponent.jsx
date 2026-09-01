@@ -1,7 +1,7 @@
 import { View, Text, StyleSheet, Image } from 'react-native';
 import Button from './common/Button';
 
-export default function EmptyComponent({text = "No data available", btnText, onBtnPress}) {
+export default function EmptyComponent({ text = "No data available", btnText, onBtnPress }) {
   return (
     <View style={styles.container}>
       <Image
@@ -26,18 +26,18 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: 250,
+    height: 180,
   },
   text: {
     fontSize: 14,
     fontWeight: '600',
     color: '#000000ff',
     textAlign: 'center',
-    marginTop: 20,
+    // marginTop: 20,
   },
 
-    button: {
-        marginTop: 20,
-        paddingHorizontal: 20,
-    }
+  button: {
+    marginTop: 20,
+    paddingHorizontal: 20,
+  }
 });

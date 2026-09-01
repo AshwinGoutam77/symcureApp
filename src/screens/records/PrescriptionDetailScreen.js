@@ -17,6 +17,7 @@ import DoctorHeader from '../../components/prescription/DoctorHeader';
 import PatientCard from '../../components/prescription/PatientCard';
 import ComplaintsSection from '../../components/prescription/ComplaintsSection';
 import DiagnosisSection from '../../components/prescription/DiagnosisSection';
+import FinalDiagnosisSection from '../../components/prescription/FinalDignosis';
 import VitalsSection from '../../components/prescription/VitalsSection';
 import ExaminationSection from '../../components/prescription/ExaminationSection';
 import MedicinesSection from '../../components/prescription/MedicinesSection';
@@ -29,7 +30,10 @@ import SectionCard from '../../components/prescription/SectionCard';
 
 import { colors, fonts } from '../../theme';
 
-import { usePrescriptionDetail } from '../../hooks/queries/useRecordsQueries';
+import {
+  usePrescriptionDetail,
+  usePrescriptionPdfFormat,
+} from '../../hooks/queries/useRecordsQueries';
 
 const formatDate = value => {
   if (!value) {
@@ -46,26 +50,17 @@ const formatDate = value => {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
+  }) + ' | ' + date.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
   });
 };
 
-const getDoctorInitials = name => {
-  if (!name) {
-    return 'DR';
-  }
-
-  return name
-    .replace(/^Dr\.?\s*/i, '')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(item => item[0])
-    .join('')
-    .toUpperCase();
-};
-
 export default function PrescriptionDetailScreen({ route, navigation }) {
-  const { prescriptionId } = route?.params || {};
+  const { prescriptionId, doctorId } = route?.params || {};
+  console.log("doctorId", doctorId);
+  
 
   const {
     data: response,
@@ -75,8 +70,17 @@ export default function PrescriptionDetailScreen({ route, navigation }) {
     refetch,
   } = usePrescriptionDetail(prescriptionId);
 
+  const {
+    data: formatResponse,
+    isLoading: isFormatLoading,
+  } = usePrescriptionPdfFormat(doctorId);
+
+  const pdfFormat = formatResponse?.prescription_pdf_format_setting;
+
+
   const prescription = response?.prescription;
   const detail = prescription?.general_detail;
+  const finalDiagnosis = prescription?.final_diagnoses;
 
   const hasExaminationData = examination => {
     if (!examination) {
@@ -120,7 +124,7 @@ export default function PrescriptionDetailScreen({ route, navigation }) {
     return hasTextData || hasBooleanData;
   };
 
-  if (isLoading || isFetching) {
+  if (isLoading || isFetching || isFormatLoading) {
     return (
       <>
         <View style={styles.header}>
@@ -214,23 +218,24 @@ export default function PrescriptionDetailScreen({ route, navigation }) {
         contentContainerStyle={styles.content}
       >
         {/* DOCTOR */}
+        {pdfFormat?.doctor?.enabled && (
+          <DoctorHeader
+            prescription={{
+              ...prescription,
+              digital_signature_text: prescription?.digital_signature_text,
+            }}
+            settings={pdfFormat?.doctor}
+            hospitalSettings={pdfFormat?.hospital}
+          />
+        )}
 
-        <DoctorHeader
-          prescription={{
-            ...prescription,
-            doctor: {
-              ...doctor,
-
-              name: doctor?.display_name,
-
-              specialization: doctor?.specialization_name,
-
-              profile_photo_url: doctor?.profile_photo_path,
-            },
-
-            digital_signature_text: prescription?.digital_signature_text,
-          }}
-        />
+        {/* PATIENT */}
+        {patient && pdfFormat?.patient?.name && (
+          <PatientCard
+            patient={patient}
+            settings={pdfFormat?.patient}
+          />
+        )}
 
         {/* PATIENT */}
 
@@ -258,119 +263,139 @@ export default function PrescriptionDetailScreen({ route, navigation }) {
           </View>
         </View>
 
+          {/* VITALS */}
+        {pdfFormat?.vitals?.enabled && !!prescription?.vitals && (
+          <VitalsSection vitals={prescription.vitals}
+            settings={pdfFormat.vitals} />
+        )}
+
+         {/* COMPLAINTS */}
+        {pdfFormat?.complaints?.enabled &&
+          !!prescription?.complaints?.length && (
+            <ComplaintsSection complaints={prescription.complaints} />
+          )}
+
         {/* DIAGNOSIS */}
+        {pdfFormat?.diagnosis?.enabled &&
+          (detail?.provisional_diagnosis_text ||
+            detail?.final_diagnosis_text ||
+            prescription?.diagnosis_summary) && (
+            <DiagnosisSection detail={detail} />
+          )}
 
-        {(detail?.provisional_diagnosis_text ||
-          detail?.final_diagnosis_text ||
-          prescription?.diagnosis_summary) && (
-          <DiagnosisSection detail={detail} />
-        )}
-
-        {/* VITALS */}
-
-        {!!prescription?.vitals && (
-          <VitalsSection vitals={prescription.vitals} />
-        )}
-
-        {/* COMPLAINTS */}
-
-        {!!prescription?.complaints?.length && (
-          <ComplaintsSection complaints={prescription.complaints} />
-        )}
+           {pdfFormat?.additionaldiagnosis?.enabled &&
+          (finalDiagnosis.length) && (
+            <FinalDiagnosisSection detail={finalDiagnosis} />
+          )}
 
         {/* EXAMINATION */}
-
-        {hasExaminationData(prescription?.examination) && (
-          <ExaminationSection examination={prescription.examination} />
-        )}
+        {pdfFormat?.examination?.enabled &&
+          hasExaminationData(prescription?.examination) && (
+            <ExaminationSection examination={prescription.examination} />
+          )}
 
         {/* MEDICINES */}
-
-        {!!prescription?.medicines?.length && (
-          <MedicinesSection medicines={prescription.medicines} />
-        )}
+        {pdfFormat?.medicines?.enabled &&
+          !!prescription?.medicines?.length && (
+            <MedicinesSection medicines={prescription.medicines} />
+          )}
 
         {/* INVESTIGATIONS */}
+        {pdfFormat?.investigations?.enabled &&
+          !!prescription?.investigations?.length && (
+            <InvestigationsSection investigations={prescription.investigations} />
+          )}
 
-        {!!prescription?.investigations?.length && (
-          <InvestigationsSection investigations={prescription.investigations} />
-        )}
+        {/* CLINICAL HISTORY */}
 
-        {/* HISTOPATHOLOGY */}
+        {pdfFormat?.clinicalHistory?.enabled && (
+          <>
+            {/* HISTORY OF PRESENT ILLNESS */}
+            {pdfFormat.clinicalHistory.presentIllness &&
+              !!detail?.history_present_illness && (
+                <SectionCard
+                  title="History of Present Illness"
+                  value={detail.history_present_illness}
+                />
+              )}
 
-        {!!detail?.histopathology && (
-          <SectionCard title="Histopathology" value={detail.histopathology} />
-        )}
+            {/* PAST MEDICAL HISTORY */}
+            {pdfFormat.clinicalHistory.pastMedicalHistory &&
+              !!detail?.past_medical_notes && (
+                <SectionCard
+                  title="Past Medical Notes"
+                  value={detail.past_medical_notes}
+                />
+              )}
 
-        {/* INVESTIGATION SUMMARY */}
+            {/* PAST TREATMENT HISTORY */}
+            {pdfFormat.clinicalHistory.pastTreatmentHistory &&
+              !!detail?.past_treatment_history && (
+                <SectionCard
+                  title="Past Treatment History"
+                  value={detail.past_treatment_history}
+                />
+              )}
 
-        {!!detail?.investigation_report_summary && (
-          <SectionCard
-            title="Investigation Report Summary"
-            value={detail.investigation_report_summary}
-          />
-        )}
+            {/* DRUG ALLERGY */}
+            {pdfFormat.clinicalHistory.drugAllergy &&
+              !!detail?.drug_allergy && (
+                <SectionCard
+                  title="Drug Allergy"
+                  value={detail.drug_allergy}
+                />
+              )}
 
-        {/* HISTORY */}
+            {/* FOOD ALLERGY */}
+            {pdfFormat.clinicalHistory.foodAllergy &&
+              !!detail?.food_other_allergy && (
+                <SectionCard
+                  title="Food / Other Allergy"
+                  value={detail.food_other_allergy}
+                />
+              )}
 
-        {!!detail?.history_present_illness && (
-          <SectionCard
-            title="History of Present Illness"
-            value={detail.history_present_illness}
-          />
-        )}
+            {/* LIFESTYLE */}
+            {pdfFormat.clinicalHistory.lifestyleHabits &&
+              !!prescription?.lifestyle_habits?.length && (
+                <LifestyleSection
+                  habits={prescription.lifestyle_habits}
+                  settings={pdfFormat.clinicalHistory}
+                />
+              )}
 
-        {/* PAST MEDICAL */}
+            {/* FAMILY HISTORY */}
+            {pdfFormat.clinicalHistory.familyHistory &&
+              !!prescription?.family_histories?.length && (
+                <FamilyHistorySection
+                  family={prescription.family_histories}
+                  settings={pdfFormat.clinicalHistory}
+                />
+              )}
 
-        {!!detail?.past_medical_notes && (
-          <SectionCard
-            title="Past Medical Notes"
-            value={detail.past_medical_notes}
-          />
-        )}
-
-        {/* PAST TREATMENT */}
-
-        {!!detail?.past_treatment_history && (
-          <SectionCard
-            title="Past Treatment History"
-            value={detail.past_treatment_history}
-          />
-        )}
-
-        {/* DRUG ALLERGY */}
-
-        {!!detail?.drug_allergy && (
-          <SectionCard title="Drug Allergy" value={detail.drug_allergy} />
-        )}
-
-        {/* FOOD ALLERGY */}
-
-        {!!detail?.food_other_allergy && (
-          <SectionCard
-            title="Food / Other Allergy"
-            value={detail.food_other_allergy}
-          />
-        )}
-
-        {/* LIFESTYLE */}
-
-        {!!prescription?.lifestyle_habits?.length && (
-          <LifestyleSection habits={prescription.lifestyle_habits} />
-        )}
-
-        {/* FAMILY HISTORY */}
-
-        {!!prescription?.family_histories?.length && (
-          <FamilyHistorySection family={prescription.family_histories} />
+            {/* EXAMINATION NOTES */}
+            {pdfFormat.clinicalHistory.examinationNotes &&
+              !!detail?.examination_notes && (
+                <SectionCard
+                  title="Examination Notes"
+                  value={detail.examination_notes}
+                />
+              )}
+          </>
         )}
 
         {/* ADVICE */}
 
-        {(detail?.general_advice ||
-          detail?.next_treatment_plan_notes ||
-          detail?.follow_up_date ||
-          detail?.next_review_plan) && <AdviceSection general={detail} />}
+        {pdfFormat?.followUp?.enabled &&
+          (detail?.general_advice ||
+            detail?.next_treatment_plan_notes ||
+            detail?.follow_up_date ||
+            detail?.next_review_plan) && (
+            <AdviceSection
+              general={detail}
+              settings={pdfFormat.followUp}
+            />
+          )}
 
         {/* LOCKED RECORD */}
 
@@ -389,7 +414,7 @@ export default function PrescriptionDetailScreen({ route, navigation }) {
         </View>
       </ScrollView>
 
-      <FooterActions prescription={prescription} />
+      {/* <FooterActions prescription={prescription} /> */}
     </SafeAreaView>
   );
 }

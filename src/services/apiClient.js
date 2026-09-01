@@ -1,6 +1,11 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_BASE_URL } from '../config/env';
+
+import {API_BASE_URL} from '../config/env';
+import activeProfileService from './activeProfileService';
+
+import store, {persistor} from '../store';
+import {clearSession} from '../store/authSlice';
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -19,54 +24,31 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   async config => {
     try {
-      // Get saved login token
-      const accessToken = await AsyncStorage.getItem('access_token');
+      const accessToken =
+        await AsyncStorage.getItem('access_token');
 
-      // Get currently active patient profile
-      const patientAccountId = await AsyncStorage.getItem('patient_account_id');
+      const patientAccountId =
+        await activeProfileService.getProfileId();
 
-      // -----------------------------------------------
       // Authorization
-      // -----------------------------------------------
-
       if (accessToken) {
-        config.headers.Authorization = `Bearer ${accessToken}`;
+        config.headers.Authorization =
+          `Bearer ${accessToken}`;
       }
 
-      // -----------------------------------------------
-      // Patient Account ID
-      // -----------------------------------------------
-
+      // Patient profile
       if (patientAccountId) {
-        config.headers['X-Patient-Account-Id'] = patientAccountId;
+        config.headers['X-Patient-Account-Id'] =
+          String(patientAccountId);
       }
-
-      // -----------------------------------------------
-      // LOG
-      // -----------------------------------------------
-
-      // console.log('================ API REQUEST ================');
-      // console.log('METHOD:', config.method?.toUpperCase());
-      // console.log('URL:', config.baseURL + config.url);
-      // console.log('PATIENT ACCOUNT ID:', patientAccountId);
-      // console.log('AUTH TOKEN:', accessToken ? 'FOUND' : 'NOT FOUND');
-      // console.log('DATA:', config.data);
-      // console.log('HEADERS:', config.headers);
-      // console.log('==============================================');
 
       return config;
     } catch (error) {
-      console.log('REQUEST INTERCEPTOR ERROR:', error);
-
       return Promise.reject(error);
     }
   },
 
-  error => {
-    console.log('REQUEST INTERCEPTOR ERROR:', error);
-
-    return Promise.reject(error);
-  },
+  error => Promise.reject(error),
 );
 
 // =====================================================
@@ -75,22 +57,58 @@ apiClient.interceptors.request.use(
 
 apiClient.interceptors.response.use(
   response => {
-    // console.log('================ API RESPONSE ================');
-    // console.log('URL:', response.config?.url);
-    // console.log('STATUS:', response.status);
-    // console.log('DATA:', response.data);
-    // console.log('===============================================');
     return response.data;
   },
 
-  error => {
-    // console.log('================ API ERROR =================');
-    // console.log('URL:', error?.config?.url);
-    // console.log('STATUS:', error?.response?.status);
-    // console.log('DATA:', error?.response?.data);
-    // console.log('MESSAGE:', error?.message);
-    // console.log('=============================================');
-    return Promise.reject(error?.response?.data || error);
+  async error => {
+    const responseData =
+      error?.response?.data;
+
+    const errorCode =
+      responseData?.error?.code;
+
+    // =================================================
+    // SESSION EXPIRED / INVALID TOKEN
+    // =================================================
+
+    if (errorCode === 'UNAUTHENTICATED') {
+      console.log('UNAUTHENTICATED → LOGGING OUT USER');
+
+      try {
+        // 1. Clear Redux session
+        store.dispatch(clearSession());
+
+        // 2. Make sure Redux Persist saves
+        //    isAuthenticated: false
+        await persistor.flush();
+
+        // 3. Clear manually stored auth data
+        await AsyncStorage.multiRemove([
+          'access_token',
+          'refresh_token',
+          'patient_account_id',
+          'active_profile',
+          'registration_phone',
+        ]);
+
+        console.log(
+          'SESSION CLEARED SUCCESSFULLY',
+        );
+      } catch (logoutError) {
+        console.log(
+          'AUTO LOGOUT ERROR:',
+          logoutError,
+        );
+      }
+    }
+
+    // =================================================
+    // RETURN API ERROR
+    // =================================================
+
+    return Promise.reject(
+      responseData || error,
+    );
   },
 );
 

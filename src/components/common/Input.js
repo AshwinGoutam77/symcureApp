@@ -19,6 +19,7 @@ export default function Input({
   onChangeText,
   disabled,
   type = 'text',
+  required
 }) {
   const [open, setOpen] = useState(false);
 
@@ -29,7 +30,10 @@ export default function Input({
 
   return (
     <View style={{marginBottom: 12}}>
-      <Text style={styles.label}>{label}</Text>
+      <View style={styles.row}>
+        <Text style={styles.label}>{label} </Text> 
+          {required && <Text style={styles.required}>*</Text>}
+      </View>
 
       {type === 'date' ? (
         <>
@@ -69,11 +73,22 @@ export default function Input({
 }
 
 const styles = StyleSheet.create({
+  row:{
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: '2',
+    marginBottom: 6,
+  },
   label: {
     fontFamily: fonts.bold,
     fontSize: 12,
     color: colors.textSecondary,
-    marginBottom: 6,
+  },
+
+  required: {
+    color: 'red',
+    fontFamily: fonts.bold,
+    fontSize: 12,
   },
 
   inputBox: {
@@ -84,13 +99,14 @@ const styles = StyleSheet.create({
     height: 52,
     backgroundColor: colors.white,
     justifyContent: 'center',
-    marginBottom: 5
+    // marginBottom: 5
   },
 
   input: {
     fontFamily: fonts.medium,
     color: colors.textPrimary,
     // height: '100%',
+    textTransform: 'capitalize',
   },
   disabledInput: {
     backgroundColor: colors.background,

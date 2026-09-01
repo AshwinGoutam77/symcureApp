@@ -1,7 +1,7 @@
 /* eslint-disable react-native/no-inline-styles */
 /* eslint-disable react/self-closing-comp */
 
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -13,33 +13,32 @@ import {
   ToastAndroid,
   Alert,
 } from 'react-native';
-import {colors, fonts, spacing} from '../../theme';
+import { colors, fonts, spacing } from '../../theme';
 import Button from '../../components/common/Button';
 import Feather from 'react-native-vector-icons/Feather';
 import MIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-import {useSendOtpMutation} from '../../hooks/queries/useAuthMutations';
+import { useResendOtpMutation, useSendOtpMutation } from '../../hooks/queries/useAuthMutations';
 
-export default function LoginScreen({route, navigation}) {
-  const {phone: previousPhone} = route?.params || {};
+export default function LoginScreen({ route, navigation }) {
+  const { phone: previousPhone } = route?.params || {};
   const [phone, setPhone] = useState(previousPhone || '');
   const [error, setError] = useState('');
 
-  const {mutateAsync: sendOtp, isPending} = useSendOtpMutation();
+  const { mutateAsync: sendOtp, isPending } = useSendOtpMutation();
+  const { mutateAsync: resendOtp, isPending: resending } =
+    useResendOtpMutation();
 
   const validatePhone = () => {
-    if (!phone) {
+    const value = phone.trim();
+
+    if (!value) {
       setError('Phone number is required');
       return false;
     }
 
-    if (!/^\d+$/.test(phone)) {
-      setError('Only numbers are allowed');
-      return false;
-    }
-
-    if (phone.length !== 10) {
-      setError('Enter valid 10-digit number');
+    if (!/^[6-9]\d{9}$/.test(value)) {
+      setError('Enter a valid 10-digit mobile number');
       return false;
     }
 
@@ -59,26 +58,67 @@ export default function LoginScreen({route, navigation}) {
         mobile: phone,
       });
 
-      console.log('SEND OTP RESPONSE:', response);
+      console.log(
+        'SEND OTP RESPONSE:',
+        JSON.stringify(response, null, 2),
+      );
 
-      if (Platform.OS === 'android') {
-        ToastAndroid.show(
-          response?.message || 'OTP Sent Successfully',
-          ToastAndroid.SHORT,
+      const otpRequestId =
+        response?.data?.otp_request_id ||
+        response?.otp_request_id;
+
+      if (!otpRequestId) {
+        setError(
+          'Unable to start OTP verification. Please try again.',
         );
-      } else {
-        Alert.alert('Success', response?.message || 'OTP Sent Successfully');
+        return;
       }
+
+      const resendAvailableInSeconds =
+        response?.data?.resend_available_in_seconds ??
+        response?.resend_available_in_seconds ??
+        30;
 
       navigation.navigate('Otp', {
         phone,
-        otpRequestId:
-          response?.data?.otp_request_id || response?.otp_request_id || null,
+        otpRequestId,
+        resendAvailableInSeconds,
       });
     } catch (err) {
-      console.log('SEND OTP ERROR:', err);
+      console.log(
+        'SEND OTP ERROR:',
+        JSON.stringify(err, null, 2),
+      );
 
-      setError(err?.message || 'Unable to send OTP. Please try again.');
+      const errorCode =
+        err?.error?.code ||
+        err?.code;
+
+      if (errorCode === 'OTP_SERVICE_UNAVAILABLE') {
+        setError(
+          'SMS service is temporarily unavailable. Please try again in a moment.',
+        );
+        return;
+      }
+
+      if (errorCode === 'OTP_RATE_LIMIT') {
+        setError(
+          err?.error?.message ||
+          'Too many OTP requests. Please try again later.',
+        );
+        return;
+      }
+
+      if (errorCode === 'INVALID_MOBILE') {
+        setError('Please enter a valid mobile number.');
+        return;
+      }
+
+      setError(
+        err?.error?.message ||
+        err?.message ||
+        'Unable to send OTP. Please try again.',
+      );
     }
   };
 
@@ -134,7 +174,7 @@ export default function LoginScreen({route, navigation}) {
               style={{
                 color: 'red',
                 fontSize: 12,
-                marginBottom: 8,
+                marginTop: 5,
               }}>
               {error}
             </Text>
@@ -145,17 +185,19 @@ export default function LoginScreen({route, navigation}) {
             title={isPending ? 'Sending OTP...' : 'Send OTP'}
             onPress={handleSendOtp}
             disabled={phone.length !== 10 || isPending}
+            containerStyle={{
+              marginTop: 16
+            }}
           />
 
           {/* TERMS */}
           <Text style={styles.or}>
-            By continuing you confirm you are 18+ and agree to our
+            By continuing you confirm you are agree to our
             <Text
               style={styles.highlightText}
               onPress={() =>
-                navigation.navigate('WebViewScreen', {
-                  url: 'https://symcure.com/',
-                  title: 'Terms of Service'
+                navigation.navigate('DataPrivacyScreen', {
+                  slug: 'terms',
                 })
               }>
               {' '}
@@ -165,9 +207,8 @@ export default function LoginScreen({route, navigation}) {
             <Text
               style={styles.highlightText}
               onPress={() =>
-                navigation.navigate('WebViewScreen', {
-                  url: 'https://symcure.com/contact',
-                  title: 'Privacy Policy'
+                navigation.navigate('DataPrivacyScreen', {
+                  slug: 'privacy_policy',
                 })
               }>
               Privacy Policy
@@ -262,7 +303,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 52,
     marginTop: 20,
-    marginBottom: 16,
   },
 
   prefix: {

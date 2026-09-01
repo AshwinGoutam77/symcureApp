@@ -1,10 +1,10 @@
 import React from 'react';
-import {View, Text, StyleSheet} from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 
 import Feather from 'react-native-vector-icons/Feather';
-import {colors, fonts} from '../../theme';
+import { colors, fonts } from '../../theme';
 
-export default function MedicinesSection({medicines}) {
+export default function MedicinesSection({ medicines }) {
   if (!medicines?.length) return null;
 
   return (
@@ -14,23 +14,38 @@ export default function MedicinesSection({medicines}) {
       {medicines.map((medicine, index) => (
         <View key={index} style={styles.medicineCard}>
           <View style={styles.topRow}>
-            <View style={{flex: 1}}>
+            <View style={{ flex: 1 }}>
               <Text style={styles.name}>
-                {medicine.medicine_name_snapshot}
+                {medicine.medicine_name_snapshot || medicine?.custom_medicine_name}
                 {medicine.strength ? ` ${medicine.strength}` : ''} mg
               </Text>
 
               <Text style={styles.meta}>
-                {medicine.food_timing_label || '-'} • {medicine.route_label || '-'} •{' '}
-                {medicine.food_timing_label || '-'}
+                {medicine.food_timing_label || '-'} • {medicine.route_label || '-'}
               </Text>
             </View>
           </View>
-          
+
           <View style={styles.scheduleRow}>
-            <Text style={styles.schedule}>{medicine.frequency_label || '-'}</Text>
-            <Text style={styles.schedule}>{medicine?.duration_value + " " + medicine.duration_unit_label || '-'}</Text>
-            <Text style={styles.schedule}>Qty: {medicine.quantity || '-'}</Text>
+           <Text style={styles.schedule}>
+  M: {medicine?.dose_morning || '-'}{' '}
+  A: {medicine?.dose_afternoon || '-'}{' '}
+  N: {medicine?.dose_night || '-'}
+</Text>
+
+            <Text style={styles.schedule}>
+              {medicine?.frequency_label || '-'}
+            </Text>
+
+            <Text style={styles.schedule}>
+              {medicine?.duration_value && medicine?.duration_unit_label
+                ? `${medicine.duration_value} ${medicine.duration_unit_label}`
+                : '-'}
+            </Text>
+
+            {/* <Text style={styles.schedule}>
+              Qty: {medicine?.quantity || '-'}
+            </Text> */}
           </View>
 
           {!!medicine.instruction && (
@@ -42,7 +57,7 @@ export default function MedicinesSection({medicines}) {
   );
 }
 
-const Info = ({title, value}) => (
+const Info = ({ title, value }) => (
   <View style={styles.infoItem}>
     <Text style={styles.infoTitle}>{title}</Text>
 
@@ -50,7 +65,7 @@ const Info = ({title, value}) => (
   </View>
 );
 
-const Dose = ({title, value}) => (
+const Dose = ({ title, value }) => (
   <View style={styles.doseBox}>
     <Text style={styles.doseTitle}>{title}</Text>
 

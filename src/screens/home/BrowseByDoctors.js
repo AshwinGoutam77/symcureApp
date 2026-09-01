@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { colors, fonts } from '../../theme';
 import { useDoctorsSearchQuery } from '../../hooks/queries/useDoctorQueries';
+import { DoctorAvatar } from '../../components/common/DoctorAvtar';
 
 export default function BrowseByDoctors({ navigation, route }) {
   const initialSearch = route?.params?.search || '';
@@ -91,9 +92,10 @@ export default function BrowseByDoctors({ navigation, route }) {
         <View style={styles.row}>
           {/* AVATAR */}
 
-          <View style={styles.avatar}>
+          {/* <View style={styles.avatar}>
             <Text style={styles.avatarText}>{getInitials(doctor)}</Text>
-          </View>
+          </View> */}
+          <DoctorAvatar doctor={doctor}/>
 
           {/* DETAILS */}
 
@@ -165,7 +167,8 @@ export default function BrowseByDoctors({ navigation, route }) {
           {/* BOOK APPOINTMENT */}
 
           <TouchableOpacity
-            style={styles.bookBtn}
+            style={[styles.bookBtn, !doctor?.clinic_fee && styles.is_bookable,]}
+            disabled={!doctor.is_bookable}
             onPress={() =>
               navigation.navigate('SelectSlotScreen', {
                 doctorId: doctor?.doctor_id,
@@ -173,7 +176,7 @@ export default function BrowseByDoctors({ navigation, route }) {
               })
             }
           >
-            <Text style={styles.bookText}>Book Appointment</Text>
+            <Text style={[styles.bookText, !doctor?.clinic_fee && styles.disabledText]}>Book Appointment</Text>
           </TouchableOpacity>
 
           {/* VIEW PROFILE */}
@@ -492,6 +495,13 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
 
+  disabled: {
+    backgroundColor: '#2e77ff8b',
+  },
+
+  disabledText: {
+    color: '#fff',},
+
   bookText: {
     color: '#fff',
     textAlign: 'center',
@@ -509,7 +519,7 @@ const styles = StyleSheet.create({
 
   profileText: {
     fontSize: 14,
-    fontFamily: fonts.medium,
+    fontFamily: fonts.semiBold,
     color: colors.textPrimary,
   },
 

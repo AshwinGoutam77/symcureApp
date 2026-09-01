@@ -1,16 +1,12 @@
 /* eslint-disable react-native/no-inline-styles */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Platform,
-  PermissionsAndroid,
   Alert,
-  Linking,
-  Share,
   ActivityIndicator,
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
@@ -22,6 +18,8 @@ import {
   usePrescriptions,
   useReports,
 } from '../../hooks/queries/useRecordsQueries';
+import Share from 'react-native-share';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function ToggleBtn({ active, label, icon, onPress }) {
   return (
@@ -38,11 +36,25 @@ function ToggleBtn({ active, label, icon, onPress }) {
 }
 
 function RecordCard({ item, navigation }) {
+  const formatDate = dateString => {
+    if (!dateString) {
+      return '';
+    }
+
+    const date = new Date(`${dateString}T00:00:00`);
+
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
   return (
     <View style={styles.doctorCard}>
       <View style={styles.cardTop}>
         <View
-          style={[styles.iconBox, { backgroundColor: item.color || '#E8F7EF' }]}
+          style={[styles.iconBox]}
         >
           <Feather name="file-text" size={18} color={colors.darkPrimary} />
         </View>
@@ -59,16 +71,18 @@ function RecordCard({ item, navigation }) {
 
       <View style={styles.infoRow}>
         <View style={styles.infoChip}>
-          <Feather name="activity" size={13} color="#EF4444" />
+          <Feather name="activity" size={13} color="#2563EB" />
 
           <Text style={styles.infoText}>{item.diagnosis}</Text>
         </View>
 
-        <View style={styles.infoChip}>
-          <Feather name="hash" size={13} color="#2563EB" />
+        {item?.item?.follow_up_date && <View style={styles.infoChip}>
+          <Feather name="calendar" size={13} color="#2563EB" />
 
-          <Text style={styles.infoText}>{item.prescriptionNo}</Text>
-        </View>
+          <Text style={styles.infoText}>
+            {/* {formatDate(item.follow_up_date)} */}
+            {formatDate(item?.item?.follow_up_date)}</Text>
+        </View>}
       </View>
 
       <View style={styles.divider} />
@@ -79,6 +93,7 @@ function RecordCard({ item, navigation }) {
           onPress={() =>
             navigation.navigate('PrescriptionDetail', {
               prescriptionId: item.prescriptionId,
+              doctorId: item.doctorId
             })
           }
         >
@@ -88,7 +103,8 @@ function RecordCard({ item, navigation }) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.bookBtn}
+          style={[styles.bookBtn, !item?.item?.doctor?.is_bookable && styles.disabled]}
+          disabled={!item?.item?.doctor?.is_bookable}
           onPress={() =>
             navigation.navigate('SelectSlotScreen', {
               selected: 'clinic',
@@ -106,7 +122,8 @@ function RecordCard({ item, navigation }) {
   );
 }
 
-function ReportCard({item, navigation}) {
+function ReportCard({ item, navigation }) {
+
   const handleShareReport = async () => {
     if (!item?.file_url) {
       Alert.alert('Unable to share', 'Report file is not available.');
@@ -114,25 +131,93 @@ function ReportCard({item, navigation}) {
     }
 
     try {
-      await Share.share({
+      const fileUrl = item.file_url;
+
+      const fileName =
+        item?.report_name?.replace(/[^a-zA-Z0-9-_]/g, '_') ||
+        'Medical_Report';
+
+      const extension =
+        fileUrl
+          .split('?')[0]
+          .split('.')
+          .pop()
+          ?.toLowerCase() || 'pdf';
+
+      const filePath = `${RNFS.CachesDirectoryPath}/${fileName}.${extension}`;
+
+      const accessToken = await AsyncStorage.getItem('access_token');
+
+      if (!accessToken) {
+        Alert.alert(
+          'Unable to share',
+          'Authentication token is missing.',
+        );
+        return;
+      }
+
+      console.log('FILE URL:', fileUrl);
+      console.log('TOKEN EXISTS:', !!accessToken);
+
+      const download = await RNFS.downloadFile({
+        fromUrl: fileUrl,
+        toFile: filePath,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: '*/*',
+        },
+      }).promise;
+
+      console.log('DOWNLOAD STATUS:', download.statusCode);
+      console.log('FILE PATH:', filePath);
+
+      const fileExists = await RNFS.exists(filePath);
+
+      console.log('FILE EXISTS:', fileExists);
+
+      if (
+        download.statusCode < 200 ||
+        download.statusCode >= 300 ||
+        !fileExists
+      ) {
+        throw new Error(
+          `Download failed: ${download.statusCode}`,
+        );
+      }
+
+      await Share.open({
         title: item.report_name || 'Medical Report',
-        message: `${item.report_name || 'Medical Report'}\n\n${item.file_url}`,
-        url: item.file_url,
+        url: `file://${filePath}`,
+        type:
+          extension === 'pdf'
+            ? 'application/pdf'
+            : extension === 'jpg' || extension === 'jpeg'
+              ? 'image/jpeg'
+              : extension === 'png'
+                ? 'image/png'
+                : '*/*',
+        failOnCancel: false,
       });
     } catch (error) {
       console.log('SHARE REPORT ERROR:', error);
+
+      Alert.alert(
+        'Unable to share',
+        error?.message ||
+        'Something went wrong while sharing the report.',
+      );
     }
   };
 
   const formattedDate = item?.created_at
     ? new Date(item.created_at.replace(' ', 'T')).toLocaleDateString(
-        'en-GB',
-        {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
-        },
-      )
+      'en-GB',
+      {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      },
+    )
     : '';
 
   return (
@@ -181,45 +266,20 @@ function ReportCard({item, navigation}) {
         {/* ACTIONS */}
         <View style={styles.btnRows}>
           <TouchableOpacity
-            style={styles.viewBtn}
+            style={styles.viewBtnCompact}
             onPress={() =>
               navigation.navigate('WebViewScreen', {
                 url: item.file_url,
                 title: item.report_name,
               })
-            }>
+            }
+          >
             <Feather
               name="eye"
               size={15}
               color={colors.darkPrimary}
             />
-
             <Text style={styles.viewText}>View</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.viewBtn,
-              {
-                backgroundColor: colors.darkPrimary,
-              },
-            ]}
-            onPress={handleShareReport}>
-            <Feather
-              name="share-2"
-              size={15}
-              color="#fff"
-            />
-
-            <Text
-              style={[
-                styles.viewText,
-                {
-                  color: '#fff',
-                },
-              ]}>
-              Share
-            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -227,11 +287,19 @@ function ReportCard({item, navigation}) {
   );
 }
 
-export default function RecordsScreen({ navigation }) {
+export default function RecordsScreen({ navigation, route }) {
   const { t } = useTranslation();
   const [showShare, setShowShare] = useState(false);
 
-  const [mode, setMode] = useState('Prescriptions');
+  const [mode, setMode] = useState(
+    route?.params?.mode || 'Prescriptions',
+  );
+
+  useEffect(() => {
+    if (route?.params?.mode) {
+      setMode(route.params.mode);
+    }
+  }, [route?.params?.mode]);
 
   const {
     data: prescriptionsResponse,
@@ -279,10 +347,10 @@ export default function RecordsScreen({ navigation }) {
 
     date: item.issued_at
       ? new Date(item.issued_at.replace(' ', 'T')).toLocaleDateString('en-GB', {
-          day: 'numeric',
-          month: 'short',
-          year: 'numeric',
-        })
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
       : '',
 
     color: '#E8F7EF',
@@ -297,7 +365,7 @@ export default function RecordsScreen({ navigation }) {
         pdfUrl,
         type: 'application/pdf',
       });
-    } catch (err) {}
+    } catch (err) { }
   };
 
   if (prescriptionsLoading || reportsLoading) {
@@ -346,9 +414,8 @@ export default function RecordsScreen({ navigation }) {
       {/* LIST */}
       {data?.length === 0 ? (
         <EmptyComponent
-          text={`No records yet. Start by booking an appointment and getting your ${
-            mode === 'Prescriptions' ? 'prescriptions' : 'reports'
-          } here.`}
+          text={`No records yet. Start by booking an appointment and getting your ${mode === 'Prescriptions' ? 'prescriptions' : 'reports'
+            } here.`}
           btnText="Book an appointment"
           onBtnPress={() => navigation.navigate('BrowseByDoctors')}
         />
@@ -359,20 +426,20 @@ export default function RecordsScreen({ navigation }) {
         >
           {mode === 'Prescriptions'
             ? prescriptionItems.map(item => (
-                <RecordCard
-                  key={item.prescriptionId}
-                  item={item}
-                  navigation={navigation}
-                  t={t}
-                />
-              ))
+              <RecordCard
+                key={item.prescriptionId}
+                item={item}
+                navigation={navigation}
+                t={t}
+              />
+            ))
             : reports.map(item => (
-                <ReportCard
-                  key={item.report_id}
-                  item={item}
-                  navigation={navigation}
-                />
-              ))}
+              <ReportCard
+                key={item.report_id}
+                item={item}
+                navigation={navigation}
+              />
+            ))}
         </ScrollView>
       )}
 
@@ -571,6 +638,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
+    backgroundColor: '#438be836',
   },
 
   name: {
@@ -736,6 +804,17 @@ const styles = StyleSheet.create({
     borderTopColor: '#EEF2F7',
   },
 
+  viewBtnCompact: {
+    alignSelf: 'flex-start',
+    height: 36,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: '#EEF4FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+
   viewBtn: {
     flex: 1,
     height: 38,
@@ -877,6 +956,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  disabled: {
+    backgroundColor: '#2e77ff8b',
   },
 
   bookText: {

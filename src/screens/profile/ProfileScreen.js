@@ -296,19 +296,40 @@ export default function ProfileScreen({ navigation }) {
           <View style={styles.statsRow}>
             {[
               {
-                value: activeProfile?.stats?.appointments_count,
+                value: activeProfile?.stats?.appointments_count ?? 0,
                 label: 'APPOINTMENTS',
+                screen: 'Appointments',
               },
               {
-                value: activeProfile?.stats?.prescriptions_count,
+                value: activeProfile?.stats?.prescriptions_count ?? 0,
                 label: 'PRESCRIPTIONS',
+                screen: 'Records',
+                mode: 'Prescriptions',
               },
-              { value: activeProfile?.stats?.reports_count, label: 'REPORTS' },
+              {
+                value: activeProfile?.stats?.reports_count ?? 0,
+                label: 'REPORTS',
+                screen: 'Records',
+                mode: 'reports',
+              },
             ].map((item, i) => (
-              <View key={i} style={styles.statBox}>
+              <TouchableOpacity
+                key={i}
+                activeOpacity={0.7}
+                style={styles.statBox}
+                onPress={() => {
+                  if (item.screen === 'Records') {
+                    navigation.navigate('Records', {
+                      mode: item.mode,
+                    });
+                  } else {
+                    navigation.navigate(item.screen);
+                  }
+                }}>
                 <Text style={styles.statValue}>{item.value}</Text>
-                <Text style={styles.statLabel}>{item.label}</Text>
-              </View>
+                <Text numberOfLines={1}
+                  minimumFontScale={0.7} style={styles.statLabel}>{item.label}</Text>
+              </TouchableOpacity>
             ))}
           </View>
         </View>
@@ -330,6 +351,7 @@ export default function ProfileScreen({ navigation }) {
 
           <Input
             label="MOBILE"
+            disabled
             keyboardType="number-pad"
             maxLength={10}
             value={form.mobile}
@@ -1023,7 +1045,7 @@ const styles = StyleSheet.create({
 
   successTitle: {
     fontSize: 21,
-    fontFamily: fonts.semiBold,
+    fontFamily: fonts.bold,
     color: '#111827',
     marginBottom: 8,
   },
@@ -1031,7 +1053,6 @@ const styles = StyleSheet.create({
   successMessage: {
     fontSize: 14,
     lineHeight: 21,
-    color: '#667085',
     textAlign: 'center',
     marginBottom: 22,
   },
@@ -1062,6 +1083,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 14,
     color: colors.textSecondary,
-    fontWeight: '600',
+    fontFamily: fonts.semiBold,
   },
 });

@@ -229,34 +229,8 @@ const AppointmentDetailScreen = ({ navigation, route }) => {
       year: 'numeric',
     });
   };
-  // const formatTime = dateTime => {
-  //   if (!dateTime) {
-  //     return '';
-  //   }
-
-  //   const timePart = dateTime.split(' ')[1];
-
-  //   if (!timePart) {
-  //     return '';
-  //   }
-
-  //   const [hours, minutes] = timePart.split(':');
-
-  //   const date = new Date();
-  //   date.setHours(Number(hours), Number(minutes), 0, 0);
-
-  //   return date.toLocaleTimeString('en-IN', {
-  //     hour: 'numeric',
-  //     minute: '2-digit',
-  //     hour12: true,
-  //   });
-  // };
 
   const appointmentDate = formatAppointmentDate(appointment?.date);
-
-  // const appointmentTime = `${formatTime(appointment?.start_at)} - ${formatTime(
-  //   appointment?.end_at,
-  // )}`;
 
   const formatTime = (dateTime) => {
     if (!dateTime) return '';
@@ -570,75 +544,6 @@ const AppointmentDetailScreen = ({ navigation, route }) => {
     },
   };
 
-  const BOTTOM_ACTIONS = {
-    upcoming: {
-      primary: 'Reschedule',
-      secondary: 'Cancel',
-    },
-
-    doctor_delayed: {
-      primary: 'Contact Clinic',
-      secondary: 'Keep Waiting',
-    },
-
-    doctor_unavailable: {
-      primary: 'Choose Another Time',
-      secondary: 'Request Refund',
-    },
-
-    doctor_cancelled: {
-      primary: 'Book Again',
-      secondary: 'Request Refund',
-    },
-
-    patient_cancelled: {
-      primary: 'Book Again',
-      secondary: null,
-    },
-
-    doctor_rescheduled: {
-      primary: 'Accept New Time',
-      secondary: 'Choose Another Time',
-    },
-
-    patient_rescheduled: {
-      primary: 'View Updated Appointment',
-      secondary: null,
-    },
-
-    patient_no_show: {
-      primary: 'Book Again',
-      secondary: null,
-    },
-
-    doctor_no_show: {
-      primary: 'Reschedule',
-      secondary: 'Request Refund',
-    },
-
-    clinic_closed: {
-      primary: 'Book Another Day',
-      secondary: 'Refund',
-    },
-
-    refund_processing: {
-      primary: 'Track Refund',
-      secondary: null,
-    },
-
-    refund_completed: {
-      primary: 'Book Again',
-      secondary: null,
-    },
-
-    completed: {
-      primary: 'Book Follow-up',
-      secondary: 'View Prescription',
-    },
-  };
-
-  // const actions = BOTTOM_ACTIONS[appointment.status];
-
   const AppointmentUpdateCard = ({ status }) => {
     const item = APPOINTMENT_STATUS[status];
 
@@ -889,8 +794,8 @@ const AppointmentDetailScreen = ({ navigation, route }) => {
                   </Text>
 
                   <Text style={styles.sub}>
-                    {appointment?.doctor?.qualification_specializations || ''},{' '}
-                    {appointment?.doctor?.qualifications};
+                    {appointment?.doctor?.qualification_specializations || appointment?.doctor?.specialization || ""},{' '}
+                    {appointment?.doctor?.qualifications}
                   </Text>
                 </View>
               </View>
@@ -957,7 +862,7 @@ const AppointmentDetailScreen = ({ navigation, route }) => {
             {appointment?.payment_mode !== 'free' && (
               <>
                 {/* PAYMENT */}
-                <View style={styles.paymentStatusRow}>
+               {appointment?.amount && <View style={styles.paymentStatusRow}>
                   <View style={styles.paymentStatusLeft}>
                     <Feather
                       name={
@@ -979,7 +884,7 @@ const AppointmentDetailScreen = ({ navigation, route }) => {
                   <View
                     style={[
                       styles.paymentBadge,
-                      appointment?.payment_status === 'paid'
+                      appointment?.payment_status === 'paid' || appointment?.payment_status === 'refunded'
                         ? styles.paymentPaid
                         : styles.paymentPending,
                     ]}
@@ -987,17 +892,15 @@ const AppointmentDetailScreen = ({ navigation, route }) => {
                     <Text
                       style={[
                         styles.paymentBadgeText,
-                        appointment?.payment_status === 'paid'
+                        appointment?.payment_status === 'paid' || appointment?.payment_status === 'refunded'
                           ? styles.paymentPaidText
                           : styles.paymentPendingText,
                       ]}
                     >
-                      {appointment?.payment_status === 'paid'
-                        ? 'Paid'
-                        : 'Pending'}
+                      {appointment?.payment_status}
                     </Text>
                   </View>
-                </View>
+                </View>}
 
                 {/* PAYMENT MODE */}
                 <View style={styles.paymentStatusRow}>
@@ -1009,7 +912,7 @@ const AppointmentDetailScreen = ({ navigation, route }) => {
 
                   <Text style={styles.paymentModeText}>
                     {appointment?.payment_mode === 'cash'
-                      ? 'Pay at Clinic'
+                      ? `${appointment?.payment_status == 'paid' ? 'Paid' : 'Pay'} at Clinic`
                       : appointment?.payment_mode
                         ?.replace(/_/g, ' ')
                         ?.replace(/\b\w/g, char => char.toUpperCase())}
@@ -1259,6 +1162,7 @@ const AppointmentDetailScreen = ({ navigation, route }) => {
             onPress={() =>
               navigation.navigate('PrescriptionDetail', {
                 prescriptionId: appointment.prescription_id,
+                doctorId: appointment.doctor.doctor_id
               })
             }
           >
@@ -1810,6 +1714,7 @@ const styles = StyleSheet.create({
   paymentBadgeText: {
     fontSize: 10,
     fontFamily: fonts.semiBold,
+    textTransform: 'capitalize',
   },
 
   paymentPaidText: {
