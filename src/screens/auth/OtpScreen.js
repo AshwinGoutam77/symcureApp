@@ -652,8 +652,6 @@ const styles = StyleSheet.create({
 
     fontFamily: fonts.bold,
 
-    fontWeight: '700',
-
     textAlign: 'center',
 
     color: '#060D1F',
@@ -675,8 +673,6 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semiBold,
 
     color: colors.textPrimary,
-
-    fontWeight: '700',
 
     fontSize: 13,
   },
@@ -738,8 +734,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
 
     fontFamily: fonts.medium,
-
-    fontWeight: '700',
 
     marginBottom: spacing.md,
   },

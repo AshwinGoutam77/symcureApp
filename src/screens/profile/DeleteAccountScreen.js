@@ -7,6 +7,7 @@ import {
     TextInput,
     ActivityIndicator,
     Modal,
+    FlatList,
 } from 'react-native';
 
 import Feather from 'react-native-vector-icons/Feather';
@@ -164,46 +165,46 @@ export default function DeleteAccountScreen({ navigation }) {
             );
 
             // ==========================================
-// CLEAR LOCAL SESSION
-// SAME AS LOGOUT
-// ==========================================
+            // CLEAR LOCAL SESSION
+            // SAME AS LOGOUT
+            // ==========================================
 
-try {
-    console.log('STARTING DELETE ACCOUNT LOCAL LOGOUT');
+            try {
+                console.log('STARTING DELETE ACCOUNT LOCAL LOGOUT');
 
-    await AsyncStorage.removeItem('access_token');
-    await AsyncStorage.removeItem('refresh_token');
-    await AsyncStorage.removeItem('patient_account_id');
-    await AsyncStorage.removeItem('active_profile');
-    await AsyncStorage.removeItem('registration_phone');
+                await AsyncStorage.removeItem('access_token');
+                await AsyncStorage.removeItem('refresh_token');
+                await AsyncStorage.removeItem('patient_account_id');
+                await AsyncStorage.removeItem('active_profile');
+                await AsyncStorage.removeItem('registration_phone');
 
-    console.log('DELETE ACCOUNT STORAGE CLEARED');
+                console.log('DELETE ACCOUNT STORAGE CLEARED');
 
-} catch (storageError) {
-    console.log(
-        'DELETE ACCOUNT STORAGE ERROR:',
-        storageError,
-    );
-}
+            } catch (storageError) {
+                console.log(
+                    'DELETE ACCOUNT STORAGE ERROR:',
+                    storageError,
+                );
+            }
 
-// ==========================================
-// CLEAR REDUX SESSION
-// AuthNavigator will automatically show Login
-// ==========================================
+            // ==========================================
+            // CLEAR REDUX SESSION
+            // AuthNavigator will automatically show Login
+            // ==========================================
 
-try {
-    dispatch(clearSession());
+            try {
+                dispatch(clearSession());
 
-    console.log(
-        'DELETE ACCOUNT REDUX SESSION CLEARED',
-    );
+                console.log(
+                    'DELETE ACCOUNT REDUX SESSION CLEARED',
+                );
 
-} catch (reduxError) {
-    console.log(
-        'DELETE ACCOUNT REDUX ERROR:',
-        reduxError,
-    );
-}
+            } catch (reduxError) {
+                console.log(
+                    'DELETE ACCOUNT REDUX ERROR:',
+                    reduxError,
+                );
+            }
         } catch (err) {
             console.log(
                 'VERIFY DELETE OTP ERROR:',
@@ -605,24 +606,19 @@ try {
                 visible={showBlockedModal}
                 transparent
                 animationType="fade"
-                onRequestClose={() =>
-                    setShowBlockedModal(false)
-                }>
+                onRequestClose={() => setShowBlockedModal(false)}>
 
                 <View style={styles.modalOverlay}>
 
                     <View style={styles.modalCard}>
 
                         {/* ICON */}
-
                         <View style={styles.appointmentIcon}>
-
                             <Feather
                                 name="calendar"
                                 size={27}
                                 color="#F59E0B"
                             />
-
                         </View>
 
                         <Text style={styles.modalTitle}>
@@ -636,49 +632,46 @@ try {
                         </Text>
 
                         {/* APPOINTMENT LIST */}
-
                         {blockingAppointments.length > 0 && (
                             <View style={styles.appointmentList}>
 
-                                <Text
-                                    style={styles.appointmentListTitle}>
+                                <Text style={styles.appointmentListTitle}>
                                     Active appointments
                                 </Text>
 
-                                {blockingAppointments.map(
-                                    appointment => (
-                                        <View
-                                            key={
-                                                appointment.appointment_id
-                                            }
-                                            style={
-                                                styles.appointmentRow
-                                            }>
+                                <FlatList
+                                    data={blockingAppointments}
+                                    keyExtractor={(item, index) =>
+                                        String(
+                                            item?.appointment_id ??
+                                            item?.appointment_code ??
+                                            index,
+                                        )
+                                    }
+                                    showsVerticalScrollIndicator={true}
+                                    nestedScrollEnabled={true}
+                                    style={styles.appointmentFlatList}
+                                    contentContainerStyle={
+                                        styles.appointmentFlatListContent
+                                    }
+                                    renderItem={({ item: appointment }) => (
+                                        <TouchableOpacity
+                                            activeOpacity={0.7}
+                                            style={styles.appointmentRow}>
 
                                             <View style={styles.appointmentLeft}>
 
-                                                <Text
-                                                    style={
-                                                        styles.appointmentCode
-                                                    }>
-                                                    {
-                                                        appointment.appointment_code
-                                                    }
+                                                <Text style={styles.appointmentCode}>
+                                                    {appointment.appointment_code}
                                                 </Text>
 
-                                                <Text
-                                                    style={
-                                                        styles.appointmentDate
-                                                    }>
+                                                <Text style={styles.appointmentDate}>
                                                     {formatAppointmentDate(
                                                         appointment.start_at,
                                                     )}
                                                 </Text>
 
-                                                <Text
-                                                    style={
-                                                        styles.appointmentStatus
-                                                    }>
+                                                <Text style={styles.appointmentStatus}>
                                                     {appointment.status}
                                                 </Text>
 
@@ -690,23 +683,20 @@ try {
                                                 color="#9CA3AF"
                                             />
 
-                                        </View>
-                                    ),
-                                )}
+                                        </TouchableOpacity>
+                                    )}
+                                />
 
                             </View>
                         )}
 
                         {/* VIEW APPOINTMENTS */}
-
                         <TouchableOpacity
                             style={styles.modalPrimaryButton}
                             onPress={() => {
                                 setShowBlockedModal(false);
 
-                                navigation.navigate(
-                                    'Appointments',
-                                );
+                                navigation.navigate('Appointments');
                             }}>
 
                             <Text style={styles.modalPrimaryText}>
@@ -716,12 +706,9 @@ try {
                         </TouchableOpacity>
 
                         {/* CLOSE */}
-
                         <TouchableOpacity
                             style={styles.modalCancelButton}
-                            onPress={() =>
-                                setShowBlockedModal(false)
-                            }>
+                            onPress={() => setShowBlockedModal(false)}>
 
                             <Text style={styles.modalCancelText}>
                                 Close
@@ -1090,12 +1077,22 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 8,
         marginTop: 17,
+        maxHeight: 350,
     },
 
     appointmentListTitle: {
         fontSize: 15,
         fontFamily: fonts.semiBold,
         paddingVertical: 7,
+    },
+
+    appointmentFlatList: {
+        width: '100%',
+        maxHeight: 220,
+    },
+
+    appointmentFlatListContent: {
+        paddingBottom: 2,
     },
 
     appointmentRow: {

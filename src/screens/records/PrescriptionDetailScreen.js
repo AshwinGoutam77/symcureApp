@@ -3,6 +3,7 @@
 import React from 'react';
 import {
   ActivityIndicator,
+  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -426,10 +427,9 @@ const styles = StyleSheet.create({
   },
 
   header: {
-    paddingTop: 60,
+    paddingTop: Platform.OS == 'ios' ? 10: 60,
     paddingHorizontal: 16,
     paddingBottom: 16,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E6EBF5',
   },
@@ -452,7 +452,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontFamily: fonts.bold,
     fontSize: 20,
-    fontWeight: '700',
     color: colors.textPrimary,
   },
 
@@ -460,7 +459,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
     fontSize: 12,
     color: colors.textSecondary,
-    fontWeight: '600',
   },
 
   content: {

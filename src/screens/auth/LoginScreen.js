@@ -277,7 +277,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontFamily: fonts.bold,
-    fontWeight: '700',
     textAlign: 'center',
     color: '#060D1F',
   },
@@ -292,7 +291,7 @@ const styles = StyleSheet.create({
 
   highlightText: {
     color: colors.darkPrimary,
-    fontWeight: '700',
+    fontFamily: fonts.bold,
   },
 
   inputBox: {
@@ -306,7 +305,7 @@ const styles = StyleSheet.create({
   },
 
   prefix: {
-    fontWeight: '700',
+    fontFamily: fonts.bold,
     marginRight: 10,
     color: '#060D1F',
   },
@@ -314,7 +313,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontFamily: fonts.medium,
-    fontWeight: '700',
     color: '#060D1F',
   },
 
@@ -322,7 +320,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     fontSize: 12,
-    fontWeight: '700',
     color: colors.textSecondary,
     fontFamily: fonts.medium,
   },
@@ -363,7 +360,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textSecondary,
     fontFamily: fonts.medium,
-    fontWeight: '700',
   },
 
   divider: {

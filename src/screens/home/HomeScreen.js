@@ -286,7 +286,7 @@ export default function HomeScreen({ navigation }) {
               style={styles.profileBtn}
               onPress={() => navigation.navigate('Profile')}
             >
-              <Feather name="user" size={18} color="#fff" />
+              <Feather name={Platform.OS === 'ios' ? 'user-check' : 'user'} size={18} color="#fff" />
             </TouchableOpacity>
           </View>
 

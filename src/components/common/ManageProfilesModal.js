@@ -9,6 +9,7 @@ import {
   FlatList,
   Alert,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -186,7 +187,7 @@ export default function ManageProfilesModal({
               onPress={onClose}
               activeOpacity={0.7}
             >
-              <Feather name="x" size={20} color="#667085" />
+              <Feather name={Platform.OS === 'ios' ? 'x-circle' : 'x'} size={20} color="#667085" />
             </TouchableOpacity>
           </View>
 
