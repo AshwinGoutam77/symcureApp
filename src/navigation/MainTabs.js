@@ -9,6 +9,7 @@ import HomeScreen from '../screens/home/HomeScreen';
 import AppointmentsScreen from '../screens/appointment/AppointmentScreen';
 import RecordsScreen from '../screens/records/RecordsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
+import { Platform } from 'react-native';
 
 const Tab = createBottomTabNavigator();
 
@@ -41,7 +42,7 @@ export default function MainTabs() {
               break;
 
             case 'Profile':
-              iconName = 'user';
+              iconName = Platform.OS === 'ios' ? 'user-check' : 'user';
               break;
 
             default:

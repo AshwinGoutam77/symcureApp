@@ -23,10 +23,8 @@ export default function DataPrivacyScreen({ navigation, route }) {
     <View style={styles.container}>
       {/* HEADER */}
       <LinearGradient
-        colors={colors.gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.header}>
+        colors={colors.gradient}>
+        <View style={styles.header}>
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}>
@@ -45,6 +43,7 @@ export default function DataPrivacyScreen({ navigation, route }) {
           {route?.params?.slug == "privacy_policy" ? 'Your privacy and control over your personal data.' :
             'Your Terms and Conditions over your personal data.'}
         </Text>
+        </View>
       </LinearGradient>
 
       {/* CONTENT */}
@@ -223,11 +222,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F4F7FD',
   },
 
-  header: {
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-  },
+ header: { paddingTop: 60, paddingHorizontal: 16, paddingBottom: 20 },
 
   backBtn: {
     width: 40,
