@@ -394,6 +394,8 @@
 				DEVELOPMENT_TEAM = BB455QGPLM;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = SymcureNew/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Symcure;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.medical";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -433,6 +435,8 @@
 				DEVELOPMENT_TEAM = "";
 				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = BB455QGPLM;
 				INFOPLIST_FILE = SymcureNew/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Symcure;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.medical";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
