@@ -46,6 +46,33 @@ const profileService = {
     apiClient.post(
       `/patient/doctors/${doctorId}/data-share`,
     ),
+
+    // Send OTP to CURRENT mobile number
+  sendMobileChangeOtp: () =>
+    apiClient.post(
+      API_ROUTES.profile.mobileChange.sendOtp,
+    ),
+
+  // Resend OTP to CURRENT mobile number
+  resendMobileChangeOtp: otpRequestId =>
+    apiClient.post(
+      API_ROUTES.profile.mobileChange.resendOtp,
+      {
+        otp_request_id: otpRequestId,
+      },
+    ),
+
+  // Verify OTP and change mobile number
+  verifyMobileChangeOtp: payload =>
+    apiClient.post(
+      API_ROUTES.profile.mobileChange.verifyOtp,
+      payload,
+    ),
+
+      setPin: pin =>
+    apiClient.post('/patient/auth/pin', {
+      pin,
+    }),
 };
 
 export default profileService;

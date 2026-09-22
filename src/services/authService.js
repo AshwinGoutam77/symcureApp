@@ -14,6 +14,14 @@ const authService = {
   me: () => apiClient.get(API_ROUTES.auth.me),
 
   logout: () => apiClient.post(API_ROUTES.auth.logout),
+
+  setPin: pin =>
+    apiClient.post(API_ROUTES.auth.setPin, {
+      pin,
+    }),
+
+  pinLogin: payload =>
+    apiClient.post(API_ROUTES.pinLogin, payload),
 };
 
 export default authService;

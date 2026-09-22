@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable react/no-unstable-nested-components */
 /* eslint-disable react/self-closing-comp */
 /* eslint-disable react-native/no-inline-styles */
@@ -23,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RefreshableScrollView from '../../components/common/RefreshableScrollView';
 import { useDashboardQuery } from '../../hooks/queries/useDashboardQueries';
+import { useDoctorsSearchQuery } from '../../hooks/queries/useDoctorQueries';
 import ManageProfilesModal from '../../components/common/ManageProfilesModal';
 import {
   useActiveProfileQuery,
@@ -38,6 +40,9 @@ export default function HomeScreen({ navigation }) {
   const scale = useRef(new Animated.Value(0.5)).current;
   const opacity = useRef(new Animated.Value(0.8)).current;
   const [search, setSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+  const [ActiveCard, setActiveCard] = useState(false)
 
   const [profileModal, setProfileModal] = useState(false);
 
@@ -103,6 +108,36 @@ export default function HomeScreen({ navigation }) {
       );
     }
   };
+
+  useEffect(() => {
+    const value = search.trim();
+
+    if (!value) {
+      setSearchQuery('');
+      setShowSearchSuggestions(false);
+      return;
+    }
+
+    setShowSearchSuggestions(true);
+
+    const timer = setTimeout(() => {
+      setSearchQuery(value);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const {
+    data: doctorSearchResponse,
+    isFetching: doctorSearchFetching,
+  } = useDoctorsSearchQuery({
+    q: searchQuery || undefined,
+    page: 1,
+    limit: 5,
+  });
+
+  const searchDoctors =
+    doctorSearchResponse?.data?.data || [];
 
   const upcomingAppointment = dashboard?.data?.upcoming_appointment;
   const recentlyConsulted = dashboard?.data?.recently_consulted || [];
@@ -266,6 +301,17 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
+  const specialties = [
+    { name: 'General', icon: require('../../assets/images/general.png') },
+    { name: 'Cardiology', icon: require('../../assets/images/cardiology.png') },
+    { name: 'Neuro', icon: require('../../assets/images/neuro.png') },
+    { name: 'Derma', icon: require('../../assets/images/derma.png') },
+    { name: 'Dental', icon: require('../../assets/images/dental.png') },
+    { name: 'Paediatrics', icon: require('../../assets/images/paediatrics.png') },
+    { name: 'Gynaecology', icon: require('../../assets/images/gynaecology.png') },
+    { name: 'Ophthal', icon: require('../../assets/images/ophthal.png') },
+  ];
+
   return (
     <>
       <LinearGradient colors={colors.gradient}>
@@ -291,9 +337,10 @@ export default function HomeScreen({ navigation }) {
           </View>
 
           {/* SEARCH */}
-          <View style={styles.searchBox}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Feather name="search" size={16} color="#7A879E" />
+          <View style={styles.searchWrapper}>
+            <View style={styles.searchBox}>
+              <Feather name="search" size={17} color="#7A879E" />
+
               <TextInput
                 placeholder={t('searchPlaceholder')}
                 placeholderTextColor={colors.textSecondary}
@@ -302,21 +349,191 @@ export default function HomeScreen({ navigation }) {
                 onChangeText={text => {
                   setSearch(text);
                 }}
+                onFocus={() => {
+                  if (search.trim()) {
+                    setShowSearchSuggestions(true);
+                  }
+                }}
+                returnKeyType="search"
+                onSubmitEditing={() => {
+                  if (search.trim()) {
+                    navigation.navigate('BrowseByDoctors', {
+                      search: search.trim(),
+                    });
+
+                    setSearch('');
+                    setShowSearchSuggestions(false);
+                  }
+                }}
               />
+
+              {/* CLEAR */}
+              {search.length > 0 && (
+                <TouchableOpacity
+                  style={styles.searchClearButton}
+                  onPress={() => {
+                    setSearch('');
+                    setSearchQuery('');
+                    setShowSearchSuggestions(false);
+                  }}
+                >
+                  <Feather
+                    name="x"
+                    size={16}
+                    color="#7A879E"
+                  />
+                </TouchableOpacity>
+              )}
+
+              {/* SEARCH BUTTON */}
+              <TouchableOpacity
+                style={styles.menuBtn}
+                onPress={() => {
+                  if (!search.trim()) {
+                    return;
+                  }
+
+                  navigation.navigate('BrowseByDoctors', {
+                    search: search.trim(),
+                  });
+
+                  setSearch('');
+                  setShowSearchSuggestions(false);
+                }}
+              >
+                <Feather
+                  name="search"
+                  size={16}
+                  color="#fff"
+                />
+              </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-              style={styles.menuBtn}
-              onPress={() => {
-                navigation.navigate('BrowseByDoctors', {
-                  search: search,
-                });
+            {/* AUTO SUGGESTIONS */}
+            {showSearchSuggestions && search.trim().length >= 2 && (
+              <View style={styles.searchSuggestions}>
+                {doctorSearchFetching ? (
+                  <View style={styles.searchLoading}>
+                    <ActivityIndicator
+                      size="small"
+                      color={colors.primary}
+                    />
 
-                setSearch('');
-              }}
-            >
-              <Feather name="log-in" size={16} color="#fff" />
-            </TouchableOpacity>
+                    <Text style={styles.searchLoadingText}>
+                      Searching doctors...
+                    </Text>
+                  </View>
+                ) : searchDoctors.length > 0 ? (
+                  <>
+                    {searchDoctors.map((doctor, index) => (
+                      <TouchableOpacity
+                        key={String(
+                          doctor?.doctor_id || index,
+                        )}
+                        style={styles.suggestionItem}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          setShowSearchSuggestions(false);
+                          setSearch('');
+
+                          navigation.navigate(
+                            'DoctorDetailScreen',
+                            {
+                              doctorId: doctor?.doctor_id,
+                            },
+                          );
+                        }}
+                      >
+                        <DoctorAvatar
+                          doctor={doctor}
+                          size={42}
+                        />
+
+                        <View style={styles.suggestionContent}>
+                          <Text
+                            style={styles.suggestionName}
+                            numberOfLines={1}
+                          >
+                            {doctor?.name || 'Doctor'}
+                          </Text>
+
+                          <Text
+                            style={styles.suggestionSpeciality}
+                            numberOfLines={1}
+                          >
+                            {doctor?.qualification_specializations ||
+                              doctor?.specialization ||
+                              'Specialist'}
+                          </Text>
+
+                          {!!doctor?.city_name && (
+                            <View style={styles.suggestionLocation}>
+                              <Feather
+                                name="map-pin"
+                                size={11}
+                                color="#98A2B3"
+                              />
+
+                              <Text
+                                style={styles.suggestionCity}
+                                numberOfLines={1}
+                              >
+                                {doctor.city_name}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+
+                        <Feather
+                          name="chevron-right"
+                          size={18}
+                          color="#98A2B3"
+                        />
+                      </TouchableOpacity>
+                    ))}
+
+                    {/* VIEW ALL */}
+                    <TouchableOpacity
+                      style={styles.viewAllSearch}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        navigation.navigate(
+                          'BrowseByDoctors',
+                          {
+                            search: search.trim(),
+                          },
+                        );
+
+                        setSearch('');
+                        setShowSearchSuggestions(false);
+                      }}
+                    >
+                      <Text style={styles.viewAllSearchText}>
+                        View all doctors
+                      </Text>
+
+                      <Feather
+                        name="arrow-right"
+                        size={15}
+                        color={colors.primary}
+                      />
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <View style={styles.noSearchResults}>
+                    <Feather
+                      name="user-x"
+                      size={20}
+                      color="#98A2B3"
+                    />
+
+                    <Text style={styles.noSearchText}>
+                      No doctors found
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
 
           {upcomingAppointment && (
@@ -450,7 +667,7 @@ export default function HomeScreen({ navigation }) {
                 const doctor = item?.doctor;
                 const doctorName = doctor?.name || 'Doctor';
                 const specialization = [
-                  doctor?.qualification_specializations || doctor?.specialization ||  'Doctor',
+                  doctor?.qualification_specializations || doctor?.specialization || 'Doctor',
                   doctor?.qualifications,
                 ]
                   .filter(Boolean)
@@ -601,12 +818,35 @@ export default function HomeScreen({ navigation }) {
             )}
           </View>
 
-          {/* Health Tip */}
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Health Tip of the Day</Text>
+          {/* <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Browse by Speciality</Text>
           </View>
+          <View style={styles.grid}>
+            {specialties.map((item, i) => (
+              <TouchableOpacity
+                key={i}
+                onPress={() => {
+                  setActiveCard(i);
+                  navigation.navigate('BrowseByDoctors', {
+                    search: item.name,
+                  });
+                  setActiveCard(false);
+                }}
+                style={[styles.card, i === ActiveCard && styles.activeCard]}>
+                <View style={styles.iconWrap}>
+                  <Image source={item.icon} style={styles.iconWrap} />
+                </View>
+                <Text style={styles.cardText}>{item.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View> */}
 
-          <TouchableOpacity
+          {/* Health Tip */}
+          {/* <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Health Tip of the Day</Text>
+          </View> */}
+
+          {/* <TouchableOpacity
             activeOpacity={0.9}
             style={styles.healthTipCard}
             onPress={() => { }}
@@ -641,7 +881,7 @@ export default function HomeScreen({ navigation }) {
                 />
               </View>
             </View>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           {/* Did You Know */}
           <View style={styles.sectionHeader}>
@@ -746,11 +986,11 @@ export default function HomeScreen({ navigation }) {
           </View>
 
           {/* Seasonal Health Alert */}
-          <View style={styles.sectionHeader}>
+          {/* <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Seasonal Health</Text>
-          </View>
+          </View> */}
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             activeOpacity={0.9}
             style={styles.seasonCard}
             onPress={() => { }}
@@ -785,7 +1025,7 @@ export default function HomeScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
             </View>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </RefreshableScrollView>
 
         <ManageProfilesModal
@@ -926,6 +1166,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
   },
+
   ping: {
     position: 'absolute',
     top: -8,
@@ -935,6 +1176,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#00be1dff',
   },
+  
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1093,6 +1335,7 @@ const styles = StyleSheet.create({
     marginTop: 6,
     fontSize: 12,
     color: colors.textPrimary,
+    fontFamily: fonts.semiBold,
   },
 
   doctorCard: {
@@ -1547,5 +1790,120 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 16,
     marginRight: 6,
+  },
+
+  searchWrapper: {
+    position: 'relative',
+    zIndex: 100,
+  },
+
+  searchClearButton: {
+    width: 32,
+    height: 34,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 4,
+  },
+
+  searchSuggestions: {
+    position: 'absolute',
+    top: 72,
+    left: 0,
+    right: 0,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 6,
+    overflow: 'hidden',
+    zIndex: 999,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 5,
+    },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+  },
+
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F3F7',
+  },
+
+  suggestionContent: {
+    flex: 1,
+    marginLeft: 10,
+    marginRight: 8,
+  },
+
+  suggestionName: {
+    fontFamily: fonts.semiBold,
+    fontSize: 14,
+    color: colors.textPrimary,
+  },
+
+  suggestionSpeciality: {
+    marginTop: 3,
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    color: '#667085',
+  },
+
+  suggestionLocation: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 3,
+  },
+
+  suggestionCity: {
+    marginLeft: 4,
+    fontSize: 11,
+    color: '#98A2B3',
+  },
+
+  viewAllSearch: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 13,
+    gap: 6,
+  },
+
+  viewAllSearchText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 13,
+    color: colors.primary,
+  },
+
+  searchLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+  },
+
+  searchLoadingText: {
+    marginLeft: 8,
+    fontSize: 12,
+    color: '#7A879E',
+    fontFamily: fonts.medium,
+  },
+
+  noSearchResults: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+  },
+
+  noSearchText: {
+    marginLeft: 8,
+    fontSize: 13,
+    color: '#7A879E',
+    fontFamily: fonts.medium,
   },
 });

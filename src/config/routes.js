@@ -14,6 +14,12 @@ export const API_ROUTES = {
     active: '/patient/profiles/active',
     switch: '/patient/profiles/switch',
     complete: '/patient/profile',
+
+    mobileChange: {
+    sendOtp: '/patient/account/mobile/send-otp',
+    resendOtp: '/patient/account/mobile/resend-otp',
+    verifyOtp: '/patient/account/mobile/verify-otp',
+  },
   },
 
   lookups: {
@@ -56,6 +62,9 @@ export const API_ROUTES = {
    content: {
     legal: slug => `/patient/content/${slug}`,
   },
+
+    setPin: '/patient/auth/pin',
+  pinLogin: '/patient/auth/pin-login',
 };
 
 export default API_ROUTES;

@@ -2,8 +2,14 @@
 /* eslint-disable react-native/no-inline-styles */
 /* eslint-disable react/self-closing-comp */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import {
   View,
   Text,
@@ -18,52 +24,78 @@ import {
 } from 'react-native';
 
 import { colors, fonts, spacing } from '../../theme';
+
 import Button from '../../components/common/Button';
+
 import Feather from 'react-native-vector-icons/Feather';
+
 import {
   useVerifyOtpMutation,
   useResendOtpMutation,
 } from '../../hooks/queries/useAuthMutations';
+
 import { useDispatch } from 'react-redux';
+
 import {
   setSession,
   setActiveProfile,
   setFamilyMemberFlow,
 } from '../../store/authSlice';
 
-export default function OtpScreen({ navigation, route }) {
+import pinStorage from '../../utils/pinStorage';
+
+export default function OtpScreen({
+  navigation,
+  route,
+}) {
   const dispatch = useDispatch();
+
   const {
-  phone,
-  otpRequestId: initialOtpRequestId,
-  resendAvailableInSeconds = 30,
-} = route.params || {};
+    phone,
+    otpRequestId: initialOtpRequestId,
+    resendAvailableInSeconds = 30,
+  } = route.params || {};
+
   const OTP_LENGTH = 4;
 
-const [otp, setOtp] = useState(
-  Array(OTP_LENGTH).fill(''),
-);
-  const [otpRequestId, setOtpRequestId] = useState(
-  initialOtpRequestId,
-);
+  const [otp, setOtp] = useState(
+    Array(OTP_LENGTH).fill(''),
+  );
 
-const [timer, setTimer] = useState(
-  resendAvailableInSeconds,
-);
+  const [
+    otpRequestId,
+    setOtpRequestId,
+  ] = useState(initialOtpRequestId);
+
+  const [timer, setTimer] = useState(
+    resendAvailableInSeconds,
+  );
+
   const [error, setError] = useState('');
-  const [profileModal, setProfileModal] = useState(false);
-  const inputs = useRef([]);
-  const {
-  mutateAsync: verifyOtp,
-  isPending: loading,
-} = useVerifyOtpMutation();
 
-const {
-  mutateAsync: resendOtp,
-  isPending: resending,
-} = useResendOtpMutation();
-  const [verifyResponse, setVerifyResponse] = useState(null);
+  const [profileModal, setProfileModal] =
+    useState(false);
+
+  const inputs = useRef([]);
+
+  const {
+    mutateAsync: verifyOtp,
+    isPending: loading,
+  } = useVerifyOtpMutation();
+
+  const {
+    mutateAsync: resendOtp,
+    isPending: resending,
+  } = useResendOtpMutation();
+
+  const [verifyResponse, setVerifyResponse] =
+    useState(null);
+
   const [profiles, setProfiles] = useState([]);
+
+  // =========================================================
+  // TIMER
+  // =========================================================
 
   useEffect(() => {
     if (timer <= 0) {
@@ -79,7 +111,14 @@ const {
     };
   }, [timer]);
 
-  const handleChange = (text, index) => {
+  // =========================================================
+  // OTP INPUT
+  // =========================================================
+
+  const handleChange = (
+    text,
+    index,
+  ) => {
     if (!/^\d?$/.test(text)) {
       return;
     }
@@ -89,15 +128,25 @@ const {
     newOtp[index] = text;
 
     setOtp(newOtp);
+
     if (error) {
       setError('');
     }
-    if (text && index < OTP_LENGTH - 1) {
-  inputs.current[index + 1]?.focus();
-}
+
+    if (
+      text &&
+      index < OTP_LENGTH - 1
+    ) {
+      inputs.current[
+        index + 1
+      ]?.focus();
+    }
   };
 
-  const handleBackspace = (key, index) => {
+  const handleBackspace = (
+    key,
+    index,
+  ) => {
     if (key !== 'Backspace') {
       return;
     }
@@ -109,20 +158,36 @@ const {
 
       setOtp(newOtp);
     } else if (index > 0) {
-      inputs.current[index - 1]?.focus();
+      inputs.current[
+        index - 1
+      ]?.focus();
     }
   };
+
+  // =========================================================
+  // VALIDATE OTP
+  // =========================================================
 
   const validateOtp = () => {
     const otpValue = otp.join('');
 
-   if (otpValue.length !== OTP_LENGTH) {
-  setError(`Please enter complete ${OTP_LENGTH}-digit OTP`);
-  return false;
-}
+    if (
+      otpValue.length !==
+      OTP_LENGTH
+    ) {
+      setError(
+        `Please enter complete ${OTP_LENGTH}-digit OTP`,
+      );
+
+      return false;
+    }
 
     return true;
   };
+
+  // =========================================================
+  // VERIFY OTP
+  // =========================================================
 
   const handleVerify = async () => {
     if (!validateOtp()) {
@@ -134,142 +199,280 @@ const {
     try {
       setError('');
 
-if (!otpRequestId) {
-  setError(
-    'OTP session expired. Please request a new OTP.',
-  );
-  return;
-}
+      if (!otpRequestId) {
+        setError(
+          'OTP session expired. Please request a new OTP.',
+        );
 
-const payload = {
-  mobile: phone,
-  otp: otpValue,
-  otp_request_id: otpRequestId,
-};
-
-      const response = await verifyOtp(payload);
-      const data = response?.data;
-
-      if (!data) {
-        setError('Invalid response from server.');
         return;
       }
 
-      await AsyncStorage.setItem('registration_phone', String(phone));
+      const payload = {
+        mobile: phone,
+        otp: otpValue,
+        otp_request_id:
+          otpRequestId,
+      };
+
+      const response =
+        await verifyOtp(payload);
+
+      console.log(
+        '====================================',
+      );
+
+      console.log(
+        'VERIFY OTP RESPONSE:',
+        JSON.stringify(
+          response,
+          null,
+          2,
+        ),
+      );
+
+      console.log(
+        '====================================',
+      );
+
+      const data =
+        response?.data;
+
+      if (!data) {
+        setError(
+          'Invalid response from server.',
+        );
+
+        return;
+      }
+
+      // =====================================================
+      // SAVE MOBILE
+      // =====================================================
+
+      await AsyncStorage.setItem(
+        'registration_phone',
+        String(phone),
+      );
+
+      // =====================================================
+      // SAVE PIN STATUS
+      // =====================================================
+
+      /*
+       * This is important.
+       *
+       * If the account already has a PIN,
+       * LoginScreen will show PIN login
+       * next time.
+       */
+      await pinStorage.setPinSet(
+        data?.user?.pin_set ??
+        data?.active_profile?.pin_set ??
+        false,
+      );
+
+      await pinStorage.setLoginMobile(
+        String(phone),
+      );
+
+      // =====================================================
+      // SAVE ACCESS TOKEN
+      // =====================================================
+
+      if (data?.access_token) {
+        await AsyncStorage.setItem(
+          'access_token',
+          data.access_token,
+        );
+      }
+
+      // =====================================================
+      // SAVE REFRESH TOKEN
+      // =====================================================
+
+      if (data?.refresh_token) {
+        await AsyncStorage.setItem(
+          'refresh_token',
+          data.refresh_token,
+        );
+      }
+
+      // =====================================================
+      // ONBOARDING
+      // =====================================================
 
       const basicDetailsRequired =
-        data?.onboarding?.basic_details_required === true;
+        data?.onboarding
+          ?.basic_details_required ===
+        true;
 
-      console.log('BASIC DETAILS REQUIRED:', basicDetailsRequired);
+      console.log(
+        'BASIC DETAILS REQUIRED:',
+        basicDetailsRequired,
+      );
 
+      // =====================================================
       // PROFILE INCOMPLETE
+      // =====================================================
 
       if (basicDetailsRequired) {
-        const patientAccountId = data?.primary_account?.patient_account_id;
+        const patientAccountId =
+          data?.primary_account
+            ?.patient_account_id;
 
-        console.log('REGISTRATION PATIENT ACCOUNT ID:', patientAccountId);
+        console.log(
+          'REGISTRATION PATIENT ACCOUNT ID:',
+          patientAccountId,
+        );
 
         if (patientAccountId) {
           await AsyncStorage.setItem(
             'patient_account_id',
-            String(patientAccountId),
+            String(
+              patientAccountId,
+            ),
           );
 
           await AsyncStorage.setItem(
             'active_profile',
-            JSON.stringify(data.primary_account),
+            JSON.stringify(
+              data.primary_account,
+            ),
           );
         }
 
-        if (data?.access_token) {
-          await AsyncStorage.setItem('access_token', data.access_token);
-        }
-
-        if (data?.refresh_token) {
-          await AsyncStorage.setItem('refresh_token', data.refresh_token);
-        }
-        await AsyncStorage.setItem('registration_phone', String(phone));
-
-        dispatch(setSession(data));
+        dispatch(
+          setSession(data),
+        );
 
         return;
-      } else {
-        if (data?.access_token) {
-          await AsyncStorage.setItem('access_token', data.access_token);
-        }
-
-        if (data?.refresh_token) {
-          await AsyncStorage.setItem('refresh_token', data.refresh_token);
-        }
       }
 
-      // PROFILE COMPLETE
+      // =====================================================
+      // PROFILES
+      // =====================================================
 
-      const profilesFromApi = data?.profiles || [];
+      const profilesFromApi =
+        data?.profiles || [];
 
       console.log(
         'AVAILABLE PROFILES:',
-        JSON.stringify(profilesFromApi, null, 2),
+        JSON.stringify(
+          profilesFromApi,
+          null,
+          2,
+        ),
       );
 
+      // =====================================================
       // NO PROFILE
+      // =====================================================
 
-      if (profilesFromApi.length === 0) {
-        setError('No patient profile found.');
+      if (
+        profilesFromApi.length ===
+        0
+      ) {
+        setError(
+          'No patient profile found.',
+        );
 
         return;
       }
 
+      // =====================================================
       // ONE PROFILE
+      // =====================================================
 
-      if (profilesFromApi.length === 1) {
-        const profile = profilesFromApi[0];
+      if (
+        profilesFromApi.length ===
+        1
+      ) {
+        const profile =
+          profilesFromApi[0];
 
-        const patientAccountId = profile?.patient_account_id;
+        const patientAccountId =
+          profile?.patient_account_id;
 
-        console.log('ONLY ONE PROFILE:', patientAccountId);
+        console.log(
+          'ONLY ONE PROFILE:',
+          patientAccountId,
+        );
 
         if (!patientAccountId) {
-          setError('Patient account ID is missing.');
+          setError(
+            'Patient account ID is missing.',
+          );
 
           return;
         }
 
-        // Save selected profile
         await AsyncStorage.setItem(
           'patient_account_id',
-          String(patientAccountId),
+          String(
+            patientAccountId,
+          ),
         );
 
-        await AsyncStorage.setItem('active_profile', JSON.stringify(profile));
+        await AsyncStorage.setItem(
+          'active_profile',
+          JSON.stringify(profile),
+        );
 
         dispatch(
           setSession({
             ...data,
-            active_profile: profile,
+            active_profile:
+              profile,
           }),
+        );
+
+        dispatch(
+          setActiveProfile(
+            profile,
+          ),
         );
 
         return;
       }
+
+      // =====================================================
       // MULTIPLE PROFILES
+      // =====================================================
 
-      console.log('MULTIPLE PROFILES - SHOW PROFILE MODAL');
+      console.log(
+        'MULTIPLE PROFILES - SHOW PROFILE MODAL',
+      );
 
-      setProfiles(profilesFromApi);
+      setProfiles(
+        profilesFromApi,
+      );
+
       setVerifyResponse(data);
+
       setProfileModal(true);
     } catch (err) {
-      console.log('====================================');
+      console.log(
+        '====================================',
+      );
 
-      console.log('VERIFY OTP ERROR:', err);
+      console.log(
+        'VERIFY OTP ERROR:',
+        JSON.stringify(
+          err,
+          null,
+          2,
+        ),
+      );
 
-      console.log('====================================');
+      console.log(
+        '====================================',
+      );
 
       const errorMessage =
         err?.error?.message ||
         err?.error ||
-        err?.errors?.[0]?.message ||
+        err?.errors?.[0]
+          ?.message ||
         err?.message ||
         'Invalid OTP. Please try again.';
 
@@ -277,143 +480,240 @@ const payload = {
     }
   };
 
-const handleResend = async () => {
-  if (timer > 0 || loading || resending) {
-    return;
-  }
+  // =========================================================
+  // RESEND OTP
+  // =========================================================
 
-  if (!otpRequestId) {
-    setError(
-      'OTP session expired. Please request a new OTP.',
-    );
-    return;
-  }
-
-  try {
-    setError('');
-
-    const response = await resendOtp({
-      mobile: phone,
-      otp_request_id: otpRequestId,
-    });
-
-    console.log(
-      'RESEND OTP RESPONSE:',
-      JSON.stringify(response, null, 2),
-    );
-
-    const newOtpRequestId =
-      response?.data?.otp_request_id ||
-      response?.otp_request_id;
-
-    if (!newOtpRequestId) {
-      setError(
-        'Unable to resend OTP. Please try again.',
-      );
+  const handleResend = async () => {
+    if (
+      timer > 0 ||
+      loading ||
+      resending
+    ) {
       return;
     }
 
-    // IMPORTANT:
-    // Use the latest request ID for the next verification.
-    setOtpRequestId(newOtpRequestId);
-
-    const cooldown =
-      response?.data?.resend_available_in_seconds ??
-      response?.resend_available_in_seconds ??
-      30;
-
-    setTimer(cooldown);
-
-    setOtp(Array(OTP_LENGTH).fill(''));
-
-    inputs.current[0]?.focus();
-  } catch (err) {
-    console.log(
-      'RESEND OTP ERROR:',
-      JSON.stringify(err, null, 2),
-    );
-
-    const errorCode =
-      err?.error?.code ||
-      err?.code;
-
-    if (errorCode === 'OTP_RESEND_COOLDOWN') {
-      const retryAfter =
-        err?.error?.details?.retry_after_seconds ??
-        err?.details?.retry_after_seconds ??
-        30;
-
-      setTimer(retryAfter);
-
+    if (!otpRequestId) {
       setError(
-        `Please wait ${retryAfter} seconds before requesting another OTP.`,
+        'OTP session expired. Please request a new OTP.',
       );
 
       return;
     }
 
-    if (errorCode === 'OTP_INVALID') {
-      setError(
-        'This OTP session has expired. Please request a new OTP.',
-      );
-
-      return;
-    }
-
-    if (errorCode === 'OTP_SERVICE_UNAVAILABLE') {
-      setError(
-        'SMS service is temporarily unavailable. Please try again in a moment.',
-      );
-
-      return;
-    }
-
-    setError(
-      err?.error?.message ||
-        err?.message ||
-        'Unable to resend OTP. Please try again.',
-    );
-  }
-};
-
-  const handleSelectProfile = async profile => {
     try {
-      console.log('====================================');
-      console.log('SELECTED PROFILE:', JSON.stringify(profile, null, 2));
+      setError('');
 
-      const patientAccountId = profile?.patient_account_id;
+      const response =
+        await resendOtp({
+          mobile: phone,
+          otp_request_id:
+            otpRequestId,
+        });
 
-      console.log('SELECTED PATIENT ACCOUNT ID:', patientAccountId);
+      console.log(
+        'RESEND OTP RESPONSE:',
+        JSON.stringify(
+          response,
+          null,
+          2,
+        ),
+      );
 
-      if (!patientAccountId) {
-        setError('Patient account ID is missing.');
+      const newOtpRequestId =
+        response?.data
+          ?.otp_request_id ||
+        response?.otp_request_id;
+
+      if (!newOtpRequestId) {
+        setError(
+          'Unable to resend OTP. Please try again.',
+        );
 
         return;
       }
 
-      await AsyncStorage.setItem(
-        'patient_account_id',
-        String(patientAccountId),
+      setOtpRequestId(
+        newOtpRequestId,
       );
 
-      await AsyncStorage.setItem('active_profile', JSON.stringify(profile));
+      const cooldown =
+        response?.data
+          ?.resend_available_in_seconds ??
+        response?.resend_available_in_seconds ??
+        30;
 
-      dispatch(setSession(verifyResponse));
-      dispatch(setActiveProfile(profile));
-      setProfileModal(false);
+      setTimer(cooldown);
 
-      console.log('ACTIVE PATIENT ACCOUNT ID:', patientAccountId);
-      console.log('====================================');
-    } catch (error) {
-      console.log('SELECT PROFILE ERROR:', error);
+      setOtp(
+        Array(OTP_LENGTH).fill(''),
+      );
 
-      setError('Unable to select profile. Please try again.');
+      inputs.current[0]?.focus();
+    } catch (err) {
+      console.log(
+        'RESEND OTP ERROR:',
+        JSON.stringify(
+          err,
+          null,
+          2,
+        ),
+      );
+
+      const errorCode =
+        err?.error?.code ||
+        err?.code;
+
+      if (
+        errorCode ===
+        'OTP_RESEND_COOLDOWN'
+      ) {
+        const retryAfter =
+          err?.error?.details
+            ?.retry_after_seconds ??
+          err?.details
+            ?.retry_after_seconds ??
+          30;
+
+        setTimer(
+          retryAfter,
+        );
+
+        setError(
+          `Please wait ${retryAfter} seconds before requesting another OTP.`,
+        );
+
+        return;
+      }
+
+      if (
+        errorCode ===
+        'OTP_INVALID'
+      ) {
+        setError(
+          'This OTP session has expired. Please request a new OTP.',
+        );
+
+        return;
+      }
+
+      if (
+        errorCode ===
+        'OTP_SERVICE_UNAVAILABLE'
+      ) {
+        setError(
+          'SMS service is temporarily unavailable. Please try again in a moment.',
+        );
+
+        return;
+      }
+
+      setError(
+        err?.error?.message ||
+        err?.message ||
+        'Unable to resend OTP. Please try again.',
+      );
     }
   };
 
+  // =========================================================
+  // SELECT PROFILE
+  // =========================================================
+
+  const handleSelectProfile =
+    async profile => {
+      try {
+        console.log(
+          'SELECTED PROFILE:',
+          JSON.stringify(
+            profile,
+            null,
+            2,
+          ),
+        );
+
+        const patientAccountId =
+          profile?.patient_account_id;
+
+        if (!patientAccountId) {
+          setError(
+            'Patient account ID is missing.',
+          );
+
+          return;
+        }
+
+        await AsyncStorage.setItem(
+          'patient_account_id',
+          String(
+            patientAccountId,
+          ),
+        );
+
+        await AsyncStorage.setItem(
+          'active_profile',
+          JSON.stringify(
+            profile,
+          ),
+        );
+
+        dispatch(
+          setSession(
+            verifyResponse,
+          ),
+        );
+
+        dispatch(
+          setActiveProfile(
+            profile,
+          ),
+        );
+
+        setProfileModal(false);
+
+        console.log(
+          'ACTIVE PATIENT ACCOUNT ID:',
+          patientAccountId,
+        );
+      } catch (error) {
+        console.log(
+          'SELECT PROFILE ERROR:',
+          error,
+        );
+
+        setError(
+          'Unable to select profile. Please try again.',
+        );
+      }
+    };
+
+  // =========================================================
+  // ADD FAMILY MEMBER
+  // =========================================================
+
+  const handleAddFamilyMember =
+    () => {
+      setProfileModal(false);
+
+      dispatch(
+        setSession(
+          verifyResponse,
+        ),
+      );
+
+      dispatch(
+        setFamilyMemberFlow({
+          phone,
+        }),
+      );
+    };
+
+  // =========================================================
+  // RENDER
+  // =========================================================
+
   return (
     <View style={styles.container}>
-      {/* BACKGROUND */}
 
       <ImageBackground
         source={require('../../assets/images/login-bg.png')}
@@ -421,189 +721,359 @@ const handleResend = async () => {
         resizeMode="cover"
       />
 
-      {/* KEYBOARD FIX */}
-
       <KeyboardAvoidingView
-        style={styles.keyboardContainer}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <View style={styles.bottomContainer}>
-          <View style={styles.card}>
-            {/* TITLE */}
+        style={
+          styles.keyboardContainer
+        }
+        behavior={
+          Platform.OS === 'ios'
+            ? 'padding'
+            : 'height'
+        }>
 
-            <Text style={styles.title}>Verify number</Text>
+        <View
+          style={
+            styles.bottomContainer
+          }>
 
-            {/* PHONE NUMBER */}
+          <View
+            style={styles.card}>
+
+            <Text
+              style={styles.title}>
+              Verify number
+            </Text>
 
             <TouchableOpacity
-              style={styles.editPhone}
-              onPress={() => navigation.navigate('Login', {
-                phone: phone,
-              })}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.bold}>Code sent to +91 {phone}</Text>
+              style={
+                styles.editPhone
+              }
+              onPress={() =>
+                navigation.navigate(
+                  'Login',
+                  {
+                    phone,
+                  },
+                )
+              }
+              activeOpacity={0.7}>
 
-              <Feather name="edit" size={16} color={colors.primary} />
+              <Text
+                style={styles.bold}>
+                Code sent to +91 {phone}
+              </Text>
+
+              <Feather
+                name="edit"
+                size={16}
+                color={
+                  colors.primary
+                }
+              />
             </TouchableOpacity>
 
             {/* OTP */}
 
-            <View style={styles.otpRow}>
-              {otp.map((digit, index) => (
-                <TextInput
-                  key={index}
-                  ref={ref => {
-                    inputs.current[index] = ref;
-                  }}
-                  style={[styles.otpBox, digit && styles.activeBox]}
-                  keyboardType="number-pad"
-                  maxLength={1}
-                  value={digit}
-                  onChangeText={text => handleChange(text, index)}
-                  onKeyPress={({ nativeEvent }) =>
-                    handleBackspace(nativeEvent.key, index)
-                  }
-                  returnKeyType={
-  index === OTP_LENGTH - 1 ? 'done' : 'next'
-}
-                  textContentType="oneTimeCode"
-                  autoComplete="sms-otp"
-                />
-              ))}
+            <View
+              style={styles.otpRow}>
+
+              {otp.map(
+                (digit, index) => (
+                  <TextInput
+                    key={index}
+                    ref={ref => {
+                      inputs.current[
+                        index
+                      ] = ref;
+                    }}
+                    style={[
+                      styles.otpBox,
+                      digit &&
+                      styles.activeBox,
+                    ]}
+                    keyboardType="number-pad"
+                    maxLength={1}
+                    value={digit}
+                    onChangeText={text =>
+                      handleChange(
+                        text,
+                        index,
+                      )
+                    }
+                    onKeyPress={({
+                      nativeEvent,
+                    }) =>
+                      handleBackspace(
+                        nativeEvent.key,
+                        index,
+                      )
+                    }
+                    returnKeyType={
+                      index ===
+                        OTP_LENGTH - 1
+                        ? 'done'
+                        : 'next'
+                    }
+                    textContentType="oneTimeCode"
+                    autoComplete="sms-otp"
+                  />
+                ),
+              )}
             </View>
 
             {/* ERROR */}
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {error ? (
+              <Text
+                style={
+                  styles.errorText
+                }>
+                {error}
+              </Text>
+            ) : null}
 
             {/* RESEND */}
 
-            <Text style={styles.resend}>
+            <Text
+              style={styles.resend}>
               Didn't get it?{' '}
+
               {timer > 0 ? (
-                <Text style={styles.resendLink}>Resend in {timer}s</Text>
+                <Text
+                  style={
+                    styles.resendLink
+                  }>
+                  Resend in {timer}s
+                </Text>
               ) : (
-                <Text style={styles.resendLink} onPress={handleResend}>
+                <Text
+                  style={
+                    styles.resendLink
+                  }
+                  onPress={
+                    handleResend
+                  }>
                   Resend OTP
                 </Text>
               )}
             </Text>
 
-            {/* VERIFY BUTTON */}
+            {/* VERIFY */}
 
             <Button
-              title={loading ? 'Verifying...' : 'Verify & Continue'}
-              onPress={handleVerify}
+              title={
+                loading
+                  ? 'Verifying...'
+                  : 'Verify & Continue'
+              }
+              onPress={
+                handleVerify
+              }
               disabled={
-  loading ||
-  otp.join('').length !== OTP_LENGTH
-}
+                loading ||
+                otp.join('')
+                  .length !==
+                OTP_LENGTH
+              }
             />
           </View>
         </View>
       </KeyboardAvoidingView>
 
-      {/* PROFILE MODAL */}
+      {/* =====================================================
+          PROFILE MODAL
+      ===================================================== */}
 
       <Modal
         visible={profileModal}
         transparent
         animationType="slide"
         statusBarTranslucent
-        onRequestClose={() => setProfileModal(false)}
-      >
-        <View style={styles.overlay}>
-          <View style={styles.modal}>
-            {/* HEADER */}
-            <View>
-              <Text style={styles.modalTitle}>Select Patient Profile</Text>
+        onRequestClose={() =>
+          setProfileModal(false)
+        }>
 
-              <Text style={styles.modalSubtitle}>
-                Choose the patient profile you want to continue with.
-              </Text>
-            </View>
+        <View
+          style={styles.overlay}>
 
-            {/* ONLY PROFILES SCROLL */}
+          <View
+            style={styles.modal}>
+
+            <Text
+              style={
+                styles.modalTitle
+              }>
+              Select Patient Profile
+            </Text>
+
+            <Text
+              style={
+                styles.modalSubtitle
+              }>
+              Choose the patient profile
+              you want to continue with.
+            </Text>
+
             <ScrollView
-              style={styles.profileScroll}
-              contentContainerStyle={styles.profileScrollContent}
-              showsVerticalScrollIndicator={false}
-              nestedScrollEnabled
-            >
-              {profiles.map(item => (
-                <TouchableOpacity
-                  key={item.patient_account_id}
-                  style={styles.profileCard}
-                  activeOpacity={0.8}
-                  onPress={() => handleSelectProfile(item)}
-                >
-                  <View style={styles.avatar}>
-                    <Text style={styles.avatarText}>
-                      {(item.full_name || 'P')
-                        .split(' ')
-                        .map(x => x[0])
-                        .join('')
-                        .toUpperCase()}
-                    </Text>
-                  </View>
+              style={
+                styles.profileScroll
+              }
+              contentContainerStyle={
+                styles.profileScrollContent
+              }
+              showsVerticalScrollIndicator={
+                false
+              }
+              nestedScrollEnabled>
 
-                  <View style={styles.profileInfo}>
-                    <Text style={styles.profileName} numberOfLines={1}>
-                      {item.full_name || 'Complete Profile'}
-                    </Text>
+              {profiles.map(
+                item => (
+                  <TouchableOpacity
+                    key={
+                      item.patient_account_id
+                    }
+                    style={
+                      styles.profileCard
+                    }
+                    activeOpacity={
+                      0.8
+                    }
+                    onPress={() =>
+                      handleSelectProfile(
+                        item,
+                      )
+                    }>
 
-                    <Text style={styles.profileRelation}>
-                      {item.relationship === 'self'
-                        ? 'Self'
-                        : item.relationship
-                          ? item.relationship
-                            .replace(/_/g, ' ')
-                            .replace(/\b\w/g, char => char.toUpperCase())
-                          : 'Patient'}
-                      {item.age ? ` • ${item.age}` : ''}
-                    </Text>
-                  </View>
+                    <View
+                      style={
+                        styles.avatar
+                      }>
 
-                  <Feather name="chevron-right" size={20} color="#94A3B8" />
-                </TouchableOpacity>
-              ))}
+                      <Text
+                        style={
+                          styles.avatarText
+                        }>
+                        {(
+                          item.full_name ||
+                          'P'
+                        )
+                          .split(' ')
+                          .map(
+                            x => x[0],
+                          )
+                          .join('')
+                          .toUpperCase()}
+                      </Text>
+                    </View>
+
+                    <View
+                      style={
+                        styles.profileInfo
+                      }>
+
+                      <Text
+                        style={
+                          styles.profileName
+                        }
+                        numberOfLines={
+                          1
+                        }>
+                        {item.full_name ||
+                          'Complete Profile'}
+                      </Text>
+
+                      <Text
+                        style={
+                          styles.profileRelation
+                        }>
+
+                        {item.relationship ===
+                          'self'
+                          ? 'Self'
+                          : item.relationship
+                            ? item.relationship
+                              .replace(
+                                /_/g,
+                                ' ',
+                              )
+                              .replace(
+                                /\b\w/g,
+                                char =>
+                                  char.toUpperCase(),
+                              )
+                            : 'Patient'}
+
+                        {item.age
+                          ? ` • ${item.age}`
+                          : ''}
+                      </Text>
+                    </View>
+
+                    <Feather
+                      name="chevron-right"
+                      size={20}
+                      color="#94A3B8"
+                    />
+                  </TouchableOpacity>
+                ),
+              )}
             </ScrollView>
 
-            {/* STICKY ADD FAMILY MEMBER */}
-            <View style={styles.stickyFooter}>
+            <View
+              style={
+                styles.stickyFooter
+              }>
+
               <TouchableOpacity
-                style={styles.addFamilyButton}
-                activeOpacity={0.8}
-                onPress={() => {
-                  setProfileModal(false);
+                style={
+                  styles.addFamilyButton
+                }
+                activeOpacity={
+                  0.8
+                }
+                onPress={
+                  handleAddFamilyMember
+                }>
 
-                  dispatch(setSession(verifyResponse));
-
-                  dispatch(
-                    setFamilyMemberFlow({
-                      phone,
-                    }),
-                  );
-                }}
-              >
-                <View style={styles.addFamilyIcon}>
+                <View
+                  style={
+                    styles.addFamilyIcon
+                  }>
                   <Feather
                     name="user-plus"
                     size={18}
-                    color={colors.darkPrimary}
+                    color={
+                      colors.darkPrimary
+                    }
                   />
                 </View>
 
-                <View style={styles.addFamilyInfo}>
-                  <Text style={styles.addFamilyTitle}>Add Family Member</Text>
+                <View
+                  style={
+                    styles.addFamilyInfo
+                  }>
 
-                  <Text style={styles.addFamilySubtitle}>
-                    Add a spouse, child, parent or dependent
+                  <Text
+                    style={
+                      styles.addFamilyTitle
+                    }>
+                    Add Family Member
+                  </Text>
+
+                  <Text
+                    style={
+                      styles.addFamilySubtitle
+                    }>
+                    Add a spouse, child,
+                    parent or dependent
                   </Text>
                 </View>
 
-                <Feather name="chevron-right" size={20} color="#94A3B8" />
+                <Feather
+                  name="chevron-right"
+                  size={20}
+                  color="#94A3B8"
+                />
               </TouchableOpacity>
             </View>
           </View>
@@ -637,74 +1107,51 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     backgroundColor: '#fff',
-
     borderTopLeftRadius: 40,
     borderTopRightRadius: 40,
-
     padding: 20,
-
     paddingTop: 48,
     paddingBottom: 40,
   },
 
   title: {
     fontSize: 24,
-
     fontFamily: fonts.bold,
-
     textAlign: 'center',
-
     color: '#060D1F',
   },
 
   editPhone: {
     flexDirection: 'row',
-
     alignItems: 'center',
-
     justifyContent: 'center',
-
     marginTop: 8,
-
     gap: 5,
   },
 
   bold: {
     fontFamily: fonts.semiBold,
-
     color: colors.textPrimary,
-
     fontSize: 13,
   },
 
   otpRow: {
     flexDirection: 'row',
-
     justifyContent: 'space-between',
-
     marginTop: spacing.lg,
     paddingHorizontal: 50,
   },
 
   otpBox: {
     width: 50,
-
     height: 50,
-
     borderRadius: 12,
-
     borderWidth: 1.5,
-
     borderColor: colors.border,
-
     textAlign: 'center',
-
     fontSize: 18,
-
     fontFamily: fonts.bold,
-
     backgroundColor: colors.white,
-
     color: colors.textPrimary,
   },
 
@@ -714,118 +1161,90 @@ const styles = StyleSheet.create({
 
   errorText: {
     color: '#DC2626',
-
     textAlign: 'center',
-
     marginTop: 10,
-
     fontSize: 12,
-
     fontFamily: fonts.medium,
   },
 
   resend: {
     textAlign: 'center',
-
     marginTop: spacing.md,
-
     fontSize: 12,
-
     color: colors.textSecondary,
-
     fontFamily: fonts.medium,
-
     marginBottom: spacing.md,
   },
 
   resendLink: {
     color: colors.primary,
-
     fontFamily: fonts.semiBold,
   },
 
   overlay: {
     flex: 1,
-
-    backgroundColor: 'rgba(0,0,0,0.45)',
-
+    backgroundColor:
+      'rgba(0,0,0,0.45)',
     justifyContent: 'flex-end',
   },
 
   modal: {
     backgroundColor: '#fff',
-
     borderTopLeftRadius: 28,
-
     borderTopRightRadius: 28,
-
     paddingHorizontal: 20,
-
     paddingTop: 34,
-
     paddingBottom: 80,
     maxHeight: '82%',
   },
 
   modalTitle: {
     fontSize: 22,
-
     fontFamily: fonts.bold,
-
     color: '#060D1F',
   },
 
   modalSubtitle: {
     fontSize: 14,
-
     color: '#7A879E',
-
     marginBottom: 24,
-
     lineHeight: 20,
+  },
+
+  profileScroll: {
+    flexGrow: 0,
+  },
+
+  profileScrollContent: {
+    paddingBottom: 8,
   },
 
   profileCard: {
     flexDirection: 'row',
-
     alignItems: 'center',
-
     paddingVertical: 14,
-
     paddingHorizontal: 12,
-
     borderRadius: 16,
-
     backgroundColor: '#F8FAFC',
-
     marginBottom: 12,
-
     borderWidth: 1,
-
     borderColor: '#EEF2F7',
   },
 
   avatar: {
     width: 52,
-
     height: 52,
-
     borderRadius: 26,
-
-    backgroundColor: colors.primary,
-
+    backgroundColor:
+      colors.primary,
     justifyContent: 'center',
-
     alignItems: 'center',
-
     marginRight: 14,
   },
 
   avatarText: {
     color: '#fff',
-
     fontSize: 18,
-
     fontFamily: fonts.bold,
   },
 
@@ -835,20 +1254,19 @@ const styles = StyleSheet.create({
 
   profileName: {
     fontSize: 16,
-
     color: '#060D1F',
-
     fontFamily: fonts.semiBold,
   },
 
   profileRelation: {
     marginTop: 2,
-
     fontSize: 13,
-
     color: '#7A879E',
-
     fontFamily: fonts.medium,
+  },
+
+  stickyFooter: {
+    paddingTop: 4,
   },
 
   addFamilyButton: {
@@ -858,7 +1276,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     marginTop: 8,
     borderWidth: 1,
-    borderColor: colors.darkPrimary,
+    borderColor:
+      colors.darkPrimary,
     borderRadius: 14,
     backgroundColor: '#F8FAFF',
   },

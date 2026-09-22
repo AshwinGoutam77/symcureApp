@@ -9,6 +9,9 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
+  ActivityIndicator,
+  TextInput,
+  Modal,
 } from 'react-native';
 
 import LinearGradient from 'react-native-linear-gradient';
@@ -29,7 +32,11 @@ import {
   useActiveProfileQuery,
   useProfilesQuery,
 } from '../../hooks/queries/useProfileQueries';
-import { useSwitchProfileMutation } from '../../hooks/queries/useProfileMutations';
+import {
+  useSwitchProfileMutation,
+  useSetPinMutation,
+} from '../../hooks/queries/useProfileMutations';
+import pinStorage from '../../utils/pinStorage';
 
 export default function SettingsScreen({ navigation }) {
   const dispatch = useDispatch();
@@ -41,6 +48,10 @@ export default function SettingsScreen({ navigation }) {
   });
 
   const [profileModal, setProfileModal] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pin, setPinValue] = useState('');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [pinError, setPinError] = useState('');
 
   const { data: profilesResponse, isLoading: profilesLoading } =
     useProfilesQuery();
@@ -50,6 +61,9 @@ export default function SettingsScreen({ navigation }) {
 
   const { mutateAsync: switchProfile, isPending: switchingProfile } =
     useSwitchProfileMutation();
+
+  const { mutateAsync: setPin, isPending: settingPin } =
+    useSetPinMutation();
 
   const profiles =
     profilesResponse?.profiles || profilesResponse?.data?.profiles || [];
@@ -62,16 +76,6 @@ export default function SettingsScreen({ navigation }) {
 
   const { mutate: logout, isPending: isLoggingOut } = useLogoutMutation();
 
-  /*
-   * Clear everything locally.
-   *
-   * This MUST happen even when logout API returns:
-   *
-   * INVALID_TOKEN
-   *
-   * because an expired/invalid token already means
-   * the user is effectively logged out.
-   */
   const finishLogout = async () => {
     try {
       console.log('STARTING LOCAL LOGOUT');
@@ -98,14 +102,7 @@ export default function SettingsScreen({ navigation }) {
       }
     }
   };
-  /*
-   * Logout
-   *
-   * onSettled runs for BOTH:
-   *
-   * 1. API success
-   * 2. API error / INVALID_TOKEN
-   */
+
   const handleLogout = () => {
     logout(undefined, {
       onSuccess: response => {
@@ -124,6 +121,70 @@ export default function SettingsScreen({ navigation }) {
     });
   };
 
+  const handleSetPin = async () => {
+    setPinError('');
+
+    if (!/^\d{4}$/.test(pin)) {
+      setPinError('PIN must be exactly 4 digits.');
+      return;
+    }
+
+    if (pin !== confirmPin) {
+      setPinError('PINs do not match.');
+      return;
+    }
+
+   try {
+  await setPin(pin);
+
+  // Save PIN availability
+  await pinStorage.setPinSet(true);
+
+  // Save login mobile
+  const mobile =
+    activeProfile?.mobile ||
+    activeProfile?.account?.mobile ||
+    activeProfile?.phone;
+
+  if (mobile) {
+    await pinStorage.setLoginMobile(mobile);
+  }
+
+  console.log(
+    'PIN SET SUCCESS - STATUS:',
+    await pinStorage.getPinSet(),
+  );
+
+  console.log(
+    'PIN SET SUCCESS - MOBILE:',
+    await pinStorage.getLoginMobile(),
+  );
+
+  setPinValue('');
+  setConfirmPin('');
+  setPinError('');
+  setShowPinModal(false);
+
+  Alert.alert(
+    activeProfile?.pin_set
+      ? 'PIN Updated'
+      : 'PIN Set',
+    activeProfile?.pin_set
+      ? 'Your login PIN has been updated successfully.'
+      : 'Your 4-digit login PIN has been set successfully.',
+  );
+} catch (error) {
+  console.log('SET PIN ERROR:', error);
+
+  setPinError(
+    error?.error?.message ||
+      error?.response?.data?.error?.message ||
+      error?.message ||
+      'Unable to set PIN. Please try again.',
+  );
+}
+  };
+
   const toggle = key => {
     setSettings(prev => ({
       ...prev,
@@ -131,9 +192,6 @@ export default function SettingsScreen({ navigation }) {
     }));
   };
 
-  /*
-   * Reusable menu row
-   */
   const MenuRow = ({ icon, title, value, onPress, showArrow = true }) => {
     return (
       <TouchableOpacity
@@ -227,23 +285,39 @@ export default function SettingsScreen({ navigation }) {
         }}
       >
         {/* ACCOUNT */}
-<View style={styles.card}>
-  <Text style={styles.heading}>Account</Text>
+        <View style={styles.card}>
+          <Text style={styles.heading}>Account</Text>
 
-  <MenuRow
-    icon="users"
-    title="Manage Profiles"
-    onPress={() => setProfileModal(true)}
-  />
+          <MenuRow
+            icon="users"
+            title="Manage Profiles"
+            onPress={() => setProfileModal(true)}
+          />
 
-  <MenuRow
-    icon="trash-2"
-    title="Delete Account"
-    onPress={() =>
-      navigation.navigate('DeleteAccountScreen')
-    }
-  />
-</View>
+          <MenuRow
+            icon="lock"
+            title="Login PIN"
+            value={
+              activeProfile?.pin_set
+                ? 'Update'
+                : 'Set up'
+            }
+            onPress={() => {
+              setPinValue('');
+              setConfirmPin('');
+              setPinError('');
+              setShowPinModal(true);
+            }}
+          />
+
+          <MenuRow
+            icon="trash-2"
+            title="Delete Account"
+            onPress={() =>
+              navigation.navigate('DeleteAccountScreen')
+            }
+          />
+        </View>
 
         {/* NOTIFICATIONS */}
         <View style={styles.card}>
@@ -342,7 +416,7 @@ export default function SettingsScreen({ navigation }) {
           <MenuRow
             icon="info"
             title="Version"
-            value="1.0.0"
+            value="1.0.1"
             showArrow={false}
           />
         </View>
@@ -361,6 +435,153 @@ export default function SettingsScreen({ navigation }) {
           </Text>
         </TouchableOpacity>
       </KeyboardAwareScrollView>
+
+      <Modal
+        visible={showPinModal}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => {
+          if (!settingPin) {
+            setShowPinModal(false);
+          }
+        }}
+      >
+        <View style={styles.pinOverlay}>
+          <View style={styles.pinModal}>
+
+            <View style={styles.pinIcon}>
+              <Feather
+                name="lock"
+                size={26}
+                color={colors.primary}
+              />
+            </View>
+
+            <Text style={styles.pinTitle}>
+              {activeProfile?.pin_set
+                ? 'Update Login PIN'
+                : 'Set Login PIN'}
+            </Text>
+
+            <Text style={styles.pinSubtitle}>
+              {activeProfile?.pin_set
+                ? 'Create a new 4-digit PIN for faster login.'
+                : 'Set a 4-digit PIN to login faster next time.'}
+            </Text>
+
+            <View style={styles.pinInputWrapper}>
+              <Text style={styles.pinLabel}>
+                NEW PIN
+              </Text>
+
+              <View style={styles.pinInputBox}>
+                <Feather
+                  name="lock"
+                  size={17}
+                  color="#64748B"
+                />
+
+                <TextInput
+                  style={styles.pinInput}
+                  placeholder="Enter 4-digit PIN"
+                  placeholderTextColor="#A0AEC0"
+                  keyboardType="number-pad"
+                  secureTextEntry
+                  maxLength={4}
+                  value={pin}
+                  onChangeText={text => {
+                    setPinValue(
+                      text.replace(/\D/g, '').slice(0, 4),
+                    );
+                    setPinError('');
+                  }}
+                />
+              </View>
+            </View>
+
+            <View style={styles.pinInputWrapper}>
+              <Text style={styles.pinLabel}>
+                CONFIRM PIN
+              </Text>
+
+              <View style={styles.pinInputBox}>
+                <Feather
+                  name="lock"
+                  size={17}
+                  color="#64748B"
+                />
+
+                <TextInput
+                  style={styles.pinInput}
+                  placeholder="Re-enter 4-digit PIN"
+                  placeholderTextColor="#A0AEC0"
+                  keyboardType="number-pad"
+                  secureTextEntry
+                  maxLength={4}
+                  value={confirmPin}
+                  onChangeText={text => {
+                    setConfirmPin(
+                      text.replace(/\D/g, '').slice(0, 4),
+                    );
+                    setPinError('');
+                  }}
+                />
+              </View>
+            </View>
+
+            {pinError ? (
+              <Text style={styles.pinError}>
+                {pinError}
+              </Text>
+            ) : null}
+
+            <View style={styles.pinActions}>
+              <TouchableOpacity
+                style={styles.pinCancelButton}
+                disabled={settingPin}
+                onPress={() => {
+                  setShowPinModal(false);
+                  setPinValue('');
+                  setConfirmPin('');
+                  setPinError('');
+                }}
+              >
+                <Text style={styles.pinCancelText}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.pinSaveButton,
+                  settingPin && { opacity: 0.7 },
+                ]}
+                disabled={
+                  settingPin ||
+                  pin.length !== 4 ||
+                  confirmPin.length !== 4
+                }
+                onPress={handleSetPin}
+              >
+                {settingPin ? (
+                  <ActivityIndicator
+                    size="small"
+                    color="#fff"
+                  />
+                ) : (
+                  <Text style={styles.pinSaveText}>
+                    {activeProfile?.pin_set
+                      ? 'Update PIN'
+                      : 'Set PIN'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+          </View>
+        </View>
+      </Modal>
 
       {/* MANAGE PROFILES MODAL */}
       <ManageProfilesModal
@@ -497,5 +718,118 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semiBold,
     fontSize: 16,
     marginLeft: 10,
+  },
+
+  pinOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+
+  pinModal: {
+    backgroundColor: '#fff',
+    borderRadius: 22,
+    padding: 22,
+  },
+
+  pinIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#EEF4FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+
+  pinTitle: {
+    fontSize: 21,
+    fontFamily: fonts.bold,
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+
+  pinSubtitle: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: '#667085',
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+
+  pinInputWrapper: {
+    marginBottom: 14,
+  },
+
+  pinLabel: {
+    fontSize: 11,
+    fontFamily: fonts.semiBold,
+    color: '#64748B',
+    marginBottom: 6,
+  },
+
+  pinInputBox: {
+    height: 50,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  pinInput: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 15,
+    color: '#111827',
+    fontFamily: fonts.medium,
+    letterSpacing: 6,
+  },
+
+  pinError: {
+    color: '#D92D20',
+    fontSize: 13,
+    marginBottom: 8,
+    fontFamily: fonts.medium,
+  },
+
+  pinActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+
+  pinCancelButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D0D5DD',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  pinCancelText: {
+    color: '#344054',
+    fontSize: 14,
+    fontFamily: fonts.semiBold,
+  },
+
+  pinSaveButton: {
+    flex: 1.4,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: colors.darkPrimary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  pinSaveText: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: fonts.semiBold,
   },
 });

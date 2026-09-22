@@ -12,10 +12,21 @@ export const useDoctorsSearchQuery = params => {
     !!params?.state_id;
 
   return useQuery({
-    queryKey: ['doctors-search', params],
-    queryFn: () => doctorService.searchDoctors(params),
+    queryKey: [
+      'doctors-search',
+      params?.q || '',
+      params?.specialization_id || null,
+      params?.city_id || null,
+      params?.state_id || null,
+      params?.page || 1,
+      params?.limit || 20,
+    ],
+
+    queryFn: () =>
+      doctorService.searchDoctors(params),
+
     enabled: hasSearch,
-    // staleTime: 30000,
+
     staleTime: 0,
   });
 };

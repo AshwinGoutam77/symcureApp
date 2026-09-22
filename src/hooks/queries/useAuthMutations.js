@@ -38,3 +38,9 @@ export const useLogoutMutation = () => {
     mutationFn: authService.logout,
   });
 };
+
+export const usePinLoginMutation = () => {
+  return useMutation({
+    mutationFn: payload => authService.pinLogin(payload),
+  });
+};

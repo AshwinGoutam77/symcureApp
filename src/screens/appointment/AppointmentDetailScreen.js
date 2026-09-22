@@ -955,15 +955,15 @@ const AppointmentDetailScreen = ({ navigation, route }) => {
 
               {/* ADDRESS */}
 
-              {appointment?.clinic?.address && (
+              {/* {appointment?.clinic?.address && (
                 <Text style={styles.arriveText}>
                   {appointment.clinic.address}
                 </Text>
-              )}
+              )} */}
 
               {/* DIRECTIONS */}
 
-              {appointment?.clinic?.address && (
+              {/* {appointment?.clinic?.address && (
                 <TouchableOpacity
                   style={styles.joinBtn}
                   onPress={() => {
@@ -980,7 +980,7 @@ const AppointmentDetailScreen = ({ navigation, route }) => {
 
                   <Text style={styles.joinText}>Get Directions</Text>
                 </TouchableOpacity>
-              )}
+              )} */}
             </View>
           )}
 

@@ -26,7 +26,12 @@ import {
   useActiveProfileQuery,
 } from '../../hooks/queries/useProfileQueries';
 
-import { useUpdateProfileMutation } from '../../hooks/queries/useProfileMutations';
+import {
+  useUpdateProfileMutation,
+  useSendMobileChangeOtpMutation,
+  useResendMobileChangeOtpMutation,
+  useVerifyMobileChangeOtpMutation,
+} from '../../hooks/queries/useProfileMutations';
 
 import {
   useStatesQuery,
@@ -34,9 +39,11 @@ import {
 } from '../../hooks/queries/useLookupQueries';
 import { setFamilyMemberFlow } from '../../store/authSlice';
 import { useDispatch } from 'react-redux';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function ProfileScreen({ navigation }) {
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
 
   const { data: profilesResponse, isLoading: profilesLoading } =
     useProfilesQuery();
@@ -44,6 +51,22 @@ export default function ProfileScreen({ navigation }) {
     useActiveProfileQuery();
   const { mutateAsync: updateProfile, isPending: updatingProfile } =
     useUpdateProfileMutation();
+
+  const {
+    mutateAsync: sendMobileChangeOtp,
+    isPending: sendingMobileOtp,
+  } = useSendMobileChangeOtpMutation();
+
+  const {
+    mutateAsync: resendMobileChangeOtp,
+    isPending: resendingMobileOtp,
+  } = useResendMobileChangeOtpMutation();
+
+  const {
+    mutateAsync: verifyMobileChangeOtp,
+    isPending: verifyingMobileOtp,
+  } = useVerifyMobileChangeOtpMutation();
+
   const profiles =
     profilesResponse?.profiles || profilesResponse?.data?.profiles || [];
   const activeProfile =
@@ -55,6 +78,39 @@ export default function ProfileScreen({ navigation }) {
   const [profileModal, setProfileModal] = useState(false);
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showRelationshipModal, setShowRelationshipModal] = useState(false);
+
+  const [showChangeMobileModal, setShowChangeMobileModal] = useState(false);
+
+  const [newMobile, setNewMobile] = useState('');
+  const [confirmNewMobile, setConfirmNewMobile] = useState('');
+  const [mobileOtp, setMobileOtp] = useState('');
+
+  const [mobileOtpRequestId, setMobileOtpRequestId] = useState(null);
+  const [mobileMask, setMobileMask] = useState('');
+
+  const [mobileResendTimer, setMobileResendTimer] = useState(0);
+
+  const [mobileChangeError, setMobileChangeError] = useState('');
+  const [mobileChangeStep, setMobileChangeStep] = useState('idle');
+
+  useEffect(() => {
+    if (mobileResendTimer <= 0) {
+      return;
+    }
+
+    const timer = setInterval(() => {
+      setMobileResendTimer(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [mobileResendTimer]);
 
   const genderOptions = ['Male', 'Female', 'Other'];
 
@@ -232,6 +288,198 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
+  const getMobileChangeError = error => {
+    const code =
+      error?.error?.code ||
+      error?.response?.data?.error?.code ||
+      error?.code;
+
+    const message =
+      error?.error?.message ||
+      error?.response?.data?.error?.message ||
+      error?.message;
+
+    switch (code) {
+      case 'INVALID_MOBILE':
+        return 'Please enter a valid 10-digit mobile number.';
+
+      case 'MOBILE_UNCHANGED':
+        return 'The new mobile number must be different from your current number.';
+
+      case 'MOBILE_IN_USE':
+        return 'This mobile number is already registered with another account.';
+
+      case 'OTP_INVALID':
+        return 'The OTP is invalid or expired. Please request a new OTP.';
+
+      case 'OTP_RATE_LIMIT':
+        return 'Too many OTP requests. Please try again later.';
+
+      case 'OTP_RESEND_COOLDOWN':
+        return 'Please wait before requesting another OTP.';
+
+      case 'OTP_SERVICE_UNAVAILABLE':
+        return 'OTP service is temporarily unavailable. Please try again shortly.';
+
+      case 'ACCOUNT_NOT_FOUND':
+        return 'Patient account could not be found.';
+
+      default:
+        return message || 'Unable to change mobile number. Please try again.';
+    }
+  };
+
+  const handleStartMobileChange = async () => {
+    try {
+      setMobileChangeError('');
+
+      const response = await sendMobileChangeOtp();
+
+      const data = response?.data || response;
+
+      const requestId = data?.otp_request_id;
+      const mask = data?.mobile_mask;
+
+      if (!requestId) {
+        throw new Error('OTP request ID was not returned.');
+      }
+
+      setMobileOtpRequestId(requestId);
+      setMobileMask(mask || '');
+      setNewMobile('');
+      setConfirmNewMobile('');
+      setMobileOtp('');
+      setMobileResendTimer(30);
+
+      setMobileChangeStep('verify');
+      setShowChangeMobileModal(true);
+    } catch (error) {
+      console.log('SEND MOBILE CHANGE OTP ERROR:', error);
+
+      setMobileChangeError(getMobileChangeError(error));
+    }
+  };
+
+  const handleResendMobileOtp = async () => {
+    if (!mobileOtpRequestId || mobileResendTimer > 0 || resendingMobileOtp) {
+      return;
+    }
+
+    try {
+      setMobileChangeError('');
+
+      const response = await resendMobileChangeOtp(mobileOtpRequestId);
+
+      const data = response?.data || response;
+
+      if (data?.otp_request_id) {
+        setMobileOtpRequestId(data.otp_request_id);
+      }
+
+      setMobileOtp('');
+      setMobileResendTimer(30);
+    } catch (error) {
+      console.log('RESEND MOBILE OTP ERROR:', error);
+
+      const code =
+        error?.error?.code ||
+        error?.response?.data?.error?.code;
+
+      if (code === 'OTP_RESEND_COOLDOWN') {
+        const retryAfter =
+          error?.error?.details?.retry_after_seconds ||
+          error?.response?.data?.error?.details?.retry_after_seconds ||
+          30;
+
+        setMobileResendTimer(Number(retryAfter));
+      }
+
+      setMobileChangeError(getMobileChangeError(error));
+    }
+  };
+
+const handleVerifyMobileChange = async () => {
+  setMobileChangeError('');
+
+  const cleanNewMobile = (newMobile || '').replace(/\D/g, '');
+  const cleanConfirmMobile = (confirmNewMobile || '').replace(/\D/g, '');
+  const cleanOtp = (mobileOtp || '').replace(/\D/g, '');
+
+  // Validate new mobile
+  if (!/^[6-9]\d{9}$/.test(cleanNewMobile)) {
+    setMobileChangeError('Please enter a valid 10-digit mobile number.');
+    return;
+  }
+
+  // Confirm new mobile
+  if (cleanNewMobile !== cleanConfirmMobile) {
+    setMobileChangeError('New mobile numbers do not match.');
+    return;
+  }
+
+  // OTP
+  if (!cleanOtp || cleanOtp.length !== 4) {
+    setMobileChangeError('Please enter the 4-digit OTP.');
+    return;
+  }
+
+  // OTP request ID
+  if (!mobileOtpRequestId) {
+    setMobileChangeError(
+      'OTP request has expired. Please request a new OTP.',
+    );
+    return;
+  }
+
+  try {
+    const response = await verifyMobileChangeOtp({
+      // IMPORTANT: backend expects snake_case
+      new_mobile: cleanNewMobile,
+      otp: cleanOtp,
+      otp_request_id: mobileOtpRequestId,
+    });
+
+    const data = response?.data || response;
+
+    console.log('MOBILE CHANGE SUCCESS:', data);
+
+    // Backend returns refreshed profiles[]
+    // React Query will refresh the profile data.
+    await queryClient.invalidateQueries({
+      queryKey: ['patient-profiles'],
+    });
+
+    await queryClient.invalidateQueries({
+      queryKey: ['active-profile'],
+    });
+
+    // Update form display immediately
+    setForm(prev => ({
+      ...prev,
+      mobile: cleanNewMobile,
+    }));
+
+    // Close modal
+    setShowChangeMobileModal(false);
+
+    // Clear temporary mobile-change state
+    setNewMobile('');
+    setConfirmNewMobile('');
+    setMobileOtp('');
+    setMobileOtpRequestId(null);
+    setMobileMask('');
+    setMobileResendTimer(0);
+    setMobileChangeError('');
+
+    // Show success
+    setShowSuccessModal(true);
+  } catch (error) {
+    console.log('VERIFY MOBILE CHANGE ERROR:', error);
+
+    setMobileChangeError(getMobileChangeError(error));
+  }
+};
+
   if (activeProfileLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -355,10 +603,25 @@ export default function ProfileScreen({ navigation }) {
             keyboardType="number-pad"
             maxLength={10}
             value={form.mobile}
-            onChangeText={text =>
-              handleChange('mobile', text.replace(/\D/g, '').slice(0, 10))
-            }
+            onChangeText={() => { }}
           />
+
+          <TouchableOpacity
+            style={styles.changeMobileButton}
+            activeOpacity={0.7}
+            onPress={handleStartMobileChange}
+            disabled={sendingMobileOtp}
+          >
+            <Feather
+              name="edit-2"
+              size={15}
+              color={colors.primary}
+            />
+
+            <Text style={styles.changeMobileButtonText}>
+              {sendingMobileOtp ? 'Sending code...' : 'Change mobile number'}
+            </Text>
+          </TouchableOpacity>
 
           {activeProfile?.relationship !== 'self' && (
             <TouchableOpacity activeOpacity={1}>
@@ -829,6 +1092,153 @@ export default function ProfileScreen({ navigation }) {
           );
         }}
       />
+
+      {/* chnage mobile number modal */}
+      <Modal
+        visible={showChangeMobileModal}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => {
+          if (!verifyingMobileOtp) {
+            setShowChangeMobileModal(false);
+          }
+        }}
+      >
+        <View style={styles.successOverlay}>
+          <KeyboardAwareScrollView
+            contentContainerStyle={styles.changeMobileModalScroll}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.changeMobileModal}>
+              <View style={styles.changeMobileIcon}>
+                <Feather
+                  name="smartphone"
+                  size={28}
+                  color={colors.primary}
+                />
+              </View>
+
+              <Text style={styles.changeMobileTitle}>
+                Change Mobile Number
+              </Text>
+
+              <Text style={styles.changeMobileSubtitle}>
+                A verification code has been sent to your current mobile number
+                {mobileMask ? ` ${mobileMask}` : ''}.
+              </Text>
+
+               <Input
+                label="OTP"
+                placeholder="Enter 4-digit OTP"
+                keyboardType="number-pad"
+                maxLength={4}
+                value={mobileOtp}
+                onChangeText={text => {
+                  setMobileOtp(
+                    text.replace(/\D/g, '').slice(0, 4),
+                  );
+                  setMobileChangeError('');
+                }}
+              />
+
+              <Input
+                label="NEW MOBILE NUMBER"
+                placeholder="Enter new mobile number"
+                keyboardType="number-pad"
+                maxLength={10}
+                value={newMobile}
+                onChangeText={text => {
+                  setNewMobile(
+                    text.replace(/\D/g, '').slice(0, 10),
+                  );
+                  setMobileChangeError('');
+                }}
+              />
+
+              <Input
+                label="CONFIRM NEW MOBILE NUMBER"
+                placeholder="Re-enter new mobile number"
+                keyboardType="number-pad"
+                maxLength={10}
+                value={confirmNewMobile}
+                onChangeText={text => {
+                  setConfirmNewMobile(
+                    text.replace(/\D/g, '').slice(0, 10),
+                  );
+                  setMobileChangeError('');
+                }}
+              />
+
+               {mobileChangeError ? (
+                <Text style={styles.mobileChangeError}>
+                  {mobileChangeError}
+                </Text>
+              ) : null}
+
+              <TouchableOpacity
+                style={styles.resendMobileButton}
+                disabled={
+                  mobileResendTimer > 0 ||
+                  resendingMobileOtp ||
+                  verifyingMobileOtp
+                }
+                onPress={handleResendMobileOtp}
+              >
+                <Text
+                  style={[
+                    styles.resendMobileText,
+                    mobileResendTimer > 0 &&
+                    styles.resendMobileTextDisabled,
+                  ]}
+                >
+                  {resendingMobileOtp
+                    ? 'Sending...'
+                    : mobileResendTimer > 0
+                      ? `Resend code in ${mobileResendTimer}s`
+                      : 'Resend code'}
+                </Text>
+              </TouchableOpacity>
+
+              <View style={styles.changeMobileActions}>
+                <TouchableOpacity
+                  style={styles.changeMobileCancelButton}
+                  disabled={verifyingMobileOtp}
+                  onPress={() => {
+                    setShowChangeMobileModal(false);
+                    setMobileChangeError('');
+                  }}
+                >
+                  <Text style={styles.changeMobileCancelText}>
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[
+                    styles.changeMobileVerifyButton,
+                    verifyingMobileOtp &&
+                    styles.changeMobileVerifyButtonDisabled,
+                  ]}
+                  disabled={verifyingMobileOtp}
+                  onPress={handleVerifyMobileChange}
+                >
+                  {verifyingMobileOtp ? (
+                    <ActivityIndicator
+                      size="small"
+                      color="#fff"
+                    />
+                  ) : (
+                    <Text style={styles.changeMobileVerifyText}>
+                      Verify & Change
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAwareScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1083,6 +1493,133 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 14,
     color: colors.textSecondary,
+    fontFamily: fonts.semiBold,
+  },
+  changeMobileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginTop: -4,
+    marginBottom: 10,
+    paddingVertical: 7,
+    paddingHorizontal: 2,
+  },
+
+  changeMobileButtonText: {
+    marginLeft: 6,
+    fontSize: 14,
+    fontFamily: fonts.semiBold,
+    color: colors.primary,
+  },
+
+  changeMobileModalScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
+
+  changeMobileModal: {
+    width: '100%',
+    backgroundColor: '#fff',
+    borderRadius: 22,
+    padding: 22,
+  },
+
+  changeMobileIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#EEF4FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: 14,
+  },
+
+  changeMobileTitle: {
+    fontSize: 21,
+    fontFamily: fonts.bold,
+    color: '#111827',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+
+  changeMobileSubtitle: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#667085',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+
+  changeMobileHelper: {
+    fontSize: 12,
+    lineHeight: 18,
+    color: '#98A2B3',
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+
+  mobileChangeError: {
+    color: '#D92D20',
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: -4,
+    marginBottom: 8,
+  },
+
+  resendMobileButton: {
+    // alignItems: 'center',
+    paddingVertical: 10,
+  },
+
+  resendMobileText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontFamily: fonts.semiBold,
+  },
+
+  resendMobileTextDisabled: {
+    color: '#98A2B3',
+  },
+
+  changeMobileActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+
+  changeMobileCancelButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#D0D5DD',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  changeMobileCancelText: {
+    color: '#344054',
+    fontSize: 14,
+    fontFamily: fonts.semiBold,
+  },
+
+  changeMobileVerifyButton: {
+    flex: 1.4,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: colors.darkPrimary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  changeMobileVerifyButtonDisabled: {
+    opacity: 0.7,
+  },
+
+  changeMobileVerifyText: {
+    color: '#fff',
+    fontSize: 14,
     fontFamily: fonts.semiBold,
   },
 });
