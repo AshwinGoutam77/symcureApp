@@ -17,11 +17,11 @@ import Input from '../../components/common/Input';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import { State, City } from 'country-state-city';
 import Feather from 'react-native-vector-icons/Feather';
 import {
   useStatesQuery,
   useCitiesQuery,
+  useDistrictsQuery,
 } from '../../hooks/queries/useLookupQueries';
 import {
   useAddFamilyMemberMutation,
@@ -38,22 +38,28 @@ export default function ProfileStep2({ navigation, route }) {
     patientAccountId = null,
   } = route?.params || {};
 
-  const [form, setForm] = useState({
-    street: '',
-    area: '',
-    state: '',
-    stateId: null,
-    city: '',
-    cityId: null,
-    district: '',
-    tehsil: '',
-    pincode: '',
-    aadhaar: '',
-    abha: '',
-  });
+const [form, setForm] = useState({
+  street: '',
+  area: '',
 
-  const [showState, setShowState] = useState(false);
-  const [showCity, setShowCity] = useState(false);
+  state: '',
+  stateId: null,
+
+  district: '',
+  districtId: null,
+
+  city: '',
+  cityId: null,
+
+  tehsil: '',
+  pincode: '',
+  aadhaar: '',
+  abha: '',
+});
+
+const [showState, setShowState] = useState(false);
+const [showDistrict, setShowDistrict] = useState(false);
+const [showCity, setShowCity] = useState(false);
 
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
@@ -64,9 +70,19 @@ export default function ProfileStep2({ navigation, route }) {
 
   const states = statesResponse?.data?.states || [];
 
-  const { data: citiesResponse, isLoading: citiesLoading } = useCitiesQuery(
-    form.stateId,
-  );
+  const {
+  data: districtsResponse,
+  isLoading: districtsLoading,
+} = useDistrictsQuery(form.stateId);
+
+const districts = districtsResponse?.data?.districts || [];
+const {
+  data: citiesResponse,
+  isLoading: citiesLoading,
+} = useCitiesQuery({
+  stateId: form.stateId,
+  districtId: form.districtId,
+});
 
   const cities = citiesResponse?.data?.cities || [];
 
@@ -140,15 +156,15 @@ export default function ProfileStep2({ navigation, route }) {
           : {}),
 
         // STEP 2
-        address: {
-          street: form.street,
-          area: form.area,
-          city_id: form.cityId,
-          state_id: form.stateId,
-          district: form.district,
-          tehsil: form.tehsil,
-          pin_code: form.pincode,
-        },
+address: {
+  street: form.street,
+  area: form.area,
+  state_id: form.stateId,
+  district_id: form.districtId,
+  city_id: form.cityId,
+  tehsil: form.tehsil,
+  pin_code: form.pincode,
+},
 
         emergency_contact: {
           name: step1Form.emergencyName || '',
@@ -365,87 +381,111 @@ export default function ProfileStep2({ navigation, route }) {
 
           {errors.area && <Text style={styles.errorLabel}>{errors.area}</Text>}
 
-          {/* STATE + CITY */}
+        {/* STATE + DISTRICT */}
+<View style={styles.row}>
+  {/* STATE */}
+  <View style={{flex: 1}}>
+    <TouchableOpacity
+      activeOpacity={1}
+      onPress={() => setShowState(true)}>
+      <View pointerEvents="none">
+        <Input
+          label="STATE (OPTIONAL)"
+          value={form.state}
+          placeholder="Select"
+          editable={false}
+        />
+      </View>
+    </TouchableOpacity>
 
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <TouchableOpacity
-                activeOpacity={1}
-                onPress={() => setShowState(true)}
-              >
-                <View pointerEvents="none">
-                  <Input
-                    label="STATE (OPTIONAL)"
-                    value={form.state}
-                    placeholder="Select"
-                    editable={false}
-                  />
-                </View>
-              </TouchableOpacity>
+    {errors.state && (
+      <Text style={styles.errorLabel}>
+        {errors.state}
+      </Text>
+    )}
+  </View>
 
-              {errors.state && (
-                <Text style={styles.errorLabel}>{errors.state}</Text>
-              )}
-            </View>
+  <View style={{width: 12}} />
 
-            <View style={{ width: 12 }} />
+  {/* DISTRICT */}
+  <View style={{flex: 1}}>
+    <TouchableOpacity
+      activeOpacity={1}
+      disabled={!form.stateId || districtsLoading}
+      onPress={() => setShowDistrict(true)}>
+      <View pointerEvents="none">
+        <Input
+          label="DISTRICT (OPTIONAL)"
+          value={form.district}
+          placeholder={
+            !form.stateId
+              ? 'Select state first'
+              : districtsLoading
+              ? 'Loading...'
+              : 'Select'
+          }
+          editable={false}
+        />
+      </View>
+    </TouchableOpacity>
 
-            <View style={{ flex: 1 }}>
-              <TouchableOpacity
-                activeOpacity={1}
-                disabled={!form.stateId}
-                onPress={() => setShowCity(true)}
-              >
-                <View pointerEvents="none">
-                  <Input
-                    label="CITY (OPTIONAL)"
-                    value={form.city}
-                    placeholder={form.stateId ? 'Select' : 'Select state first'}
-                    editable={false}
-                  />
-                </View>
-              </TouchableOpacity>
+    {errors.district && (
+      <Text style={styles.errorLabel}>
+        {errors.district}
+      </Text>
+    )}
+  </View>
+</View>
 
-              {errors.city && (
-                <Text style={styles.errorLabel}>{errors.city}</Text>
-              )}
-            </View>
-          </View>
+         {/* CITY + TEHSIL */}
+<View style={styles.row}>
+  {/* CITY */}
+  <View style={{flex: 1}}>
+    <TouchableOpacity
+      activeOpacity={1}
+      disabled={!form.districtId || citiesLoading}
+      onPress={() => setShowCity(true)}>
+      <View pointerEvents="none">
+        <Input
+          label="CITY (OPTIONAL)"
+          value={form.city}
+          placeholder={
+            !form.districtId
+              ? 'Select district first'
+              : citiesLoading
+              ? 'Loading...'
+              : 'Select'
+          }
+          editable={false}
+        />
+      </View>
+    </TouchableOpacity>
 
-          {/* DISTRICT + TEHSIL */}
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Input
-                label="DISTRICT (OPTIONAL)"
-                value={form.district}
-                onChangeText={text => handleChange('district', text)}
-                placeholder="District"
-              />
+    {errors.city && (
+      <Text style={styles.errorLabel}>
+        {errors.city}
+      </Text>
+    )}
+  </View>
 
-              {errors.district && (
-                <Text style={styles.errorLabel}>
-                  {errors.district}
-                </Text>
-              )}
-            </View>
+  <View style={{width: 12}} />
 
-            <View style={{ width: 12 }} />
+  {/* TEHSIL */}
+  <View style={{flex: 1}}>
+    <Input
+      label="TEHSIL (OPTIONAL)"
+      value={form.tehsil}
+      onChangeText={text => handleChange('tehsil', text)}
+      placeholder="Tehsil"
+    />
 
-            <View style={{ flex: 1 }}>
-              <Input
-                label="TEHSIL (OPTIONAL)"
-                value={form.tehsil}
-                onChangeText={text => handleChange('tehsil', text)}
-                placeholder="Tehsil"
-              />
-
-              {errors.tehsil && (
-                <Text style={styles.errorLabel}>
-                  {errors.tehsil}
-                </Text>
-              )}
-            </View>
-          </View>
+    {errors.tehsil && (
+      <Text style={styles.errorLabel}>
+        {errors.tehsil}
+      </Text>
+    )}
+  </View>
+</View>
 
           {/* PINCODE */}
 
@@ -542,10 +582,15 @@ export default function ProfileStep2({ navigation, route }) {
                   style={styles.modalItem}
                   onPress={() => {
                     handleChange('state', item.name);
-                    handleChange('stateId', item.id);
-                    handleChange('city', '');
-                    handleChange('cityId', '');
-                    setShowState(false);
+handleChange('stateId', item.id);
+
+handleChange('district', '');
+handleChange('districtId', null);
+
+handleChange('city', '');
+handleChange('cityId', null);
+
+setShowState(false);
                   }}
                 >
                   <Text style={styles.modalText}>{item.name}</Text>
@@ -561,38 +606,104 @@ export default function ProfileStep2({ navigation, route }) {
       )}
 
       {/* CITY MODAL */}
-      {showCity && (
-        <View style={styles.modalOverlay}>
+      {/* CITY MODAL */}
+{showCity && (
+  <View style={styles.modalOverlay}>
+    <TouchableOpacity
+      style={{flex: 1}}
+      onPress={() => setShowCity(false)}
+    />
+
+    <View style={styles.modalContainer}>
+      <View style={styles.dragBar} />
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {cities.map(item => (
           <TouchableOpacity
-            style={{ flex: 1 }}
-            onPress={() => setShowCity(false)}
-          />
+            key={item.id}
+            style={styles.modalItem}
+            onPress={() => {
+              handleChange('city', item.name);
+              handleChange('cityId', item.id);
+              setShowCity(false);
+            }}>
+            <Text style={styles.modalText}>
+              {item.name}
+            </Text>
 
-          <View style={styles.modalContainer}>
-            <View style={styles.dragBar} />
+            {form.cityId === item.id && (
+              <Feather
+                name="check"
+                size={18}
+                color={colors.primary}
+              />
+            )}
+          </TouchableOpacity>
+        ))}
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {cities.map(item => (
-                <TouchableOpacity
-                  key={`${item.name}-${item.id}`}
-                  style={styles.modalItem}
-                  onPress={() => {
-                    handleChange('city', item.name);
-                    handleChange('cityId', item.id);
-                    setShowCity(false);
-                  }}
-                >
-                  <Text style={styles.modalText}>{item.name}</Text>
-
-                  {form.city === item.name && (
-                    <Feather name="check" size={18} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+        {!citiesLoading && cities.length === 0 && (
+          <View style={{padding: 20}}>
+            <Text style={styles.modalText}>
+              No cities found
+            </Text>
           </View>
-        </View>
-      )}
+        )}
+      </ScrollView>
+    </View>
+  </View>
+)}
+
+      {/* DISTRICT MODAL */}
+{showDistrict && (
+  <View style={styles.modalOverlay}>
+    <TouchableOpacity
+      style={{flex: 1}}
+      onPress={() => setShowDistrict(false)}
+    />
+
+    <View style={styles.modalContainer}>
+      <View style={styles.dragBar} />
+
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {districts.map(item => (
+          <TouchableOpacity
+            key={item.id}
+            style={styles.modalItem}
+            onPress={() => {
+              handleChange('district', item.name);
+              handleChange('districtId', item.id);
+
+              // Reset city whenever district changes
+              handleChange('city', '');
+              handleChange('cityId', null);
+
+              setShowDistrict(false);
+            }}>
+            <Text style={styles.modalText}>
+              {item.name}
+            </Text>
+
+            {form.districtId === item.id && (
+              <Feather
+                name="check"
+                size={18}
+                color={colors.primary}
+              />
+            )}
+          </TouchableOpacity>
+        ))}
+
+        {!districtsLoading && districts.length === 0 && (
+          <View style={{padding: 20}}>
+            <Text style={styles.modalText}>
+              No districts found
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+    </View>
+  </View>
+)}
 
       {/* SUCCESS */}
       {showSuccess && (
@@ -664,18 +775,6 @@ export default function ProfileStep2({ navigation, route }) {
     </View>
   );
 }
-
-/*
- * ------------------------------------------
- * DOB CONVERTER
- * ------------------------------------------
- *
- * UI:
- * DD/MM/YYYY
- *
- * API:
- * YYYY-MM-DD
- */
 
 const convertDobToApiFormat = dob => {
   if (!dob) {

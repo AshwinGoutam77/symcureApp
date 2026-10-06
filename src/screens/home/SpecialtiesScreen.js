@@ -1,6 +1,8 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react-native/no-inline-styles */
+
 import Feather from 'react-native-vector-icons/Feather';
-import React, {useState} from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,207 +11,335 @@ import {
   TextInput,
   FlatList,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
-import {colors, fonts} from '../../theme';
-import {useTranslation} from 'react-i18next';
+import { colors, fonts } from '../../theme';
+import { useTranslation } from 'react-i18next';
+import { useDashboardQuery } from '../../hooks/queries/useDashboardQueries';
 
-const specialties = [
-  {name: 'General', icon: require('../../assets/images/general.png')},
-  {name: 'Cardiology', icon: require('../../assets/images/cardiology.png')},
-  {name: 'Neuro', icon: require('../../assets/images/neuro.png')},
-  {name: 'Derma', icon: require('../../assets/images/derma.png')},
-  {name: 'Dental', icon: require('../../assets/images/dental.png')},
-  {name: 'Paediatrics', icon: require('../../assets/images/paediatrics.png')},
-  {name: 'Gynaecology', icon: require('../../assets/images/gynaecology.png')},
-  {name: 'Ophthal', icon: require('../../assets/images/ophthal.png')},
-  {name: 'General', icon: require('../../assets/images/general.png')},
-  {name: 'Cardiology', icon: require('../../assets/images/cardiology.png')},
-  {name: 'Neuro', icon: require('../../assets/images/neuro.png')},
-  {name: 'Derma', icon: require('../../assets/images/derma.png')},
-  {name: 'Dental', icon: require('../../assets/images/dental.png')},
-  {name: 'Paediatrics', icon: require('../../assets/images/paediatrics.png')},
-  {name: 'Gynaecology', icon: require('../../assets/images/gynaecology.png')},
-  {name: 'Ophthal', icon: require('../../assets/images/ophthal.png')},
-  {name: 'General', icon: require('../../assets/images/general.png')},
-  {name: 'Cardiology', icon: require('../../assets/images/cardiology.png')},
-  {name: 'Neuro', icon: require('../../assets/images/neuro.png')},
-  {name: 'Derma', icon: require('../../assets/images/derma.png')},
-  {name: 'Dental', icon: require('../../assets/images/dental.png')},
-  {name: 'Paediatrics', icon: require('../../assets/images/paediatrics.png')},
-  {name: 'Gynaecology', icon: require('../../assets/images/gynaecology.png')},
-  {name: 'Ophthal', icon: require('../../assets/images/ophthal.png')},
-];
+export default function SpecialtiesScreen({ navigation }) {
+  const { t } = useTranslation();
 
-export default function SpecialtiesScreen({navigation}) {
-  const {t} = useTranslation();
   const [search, setSearch] = useState('');
 
-  const filtered = specialties.filter(item =>
-    item.name.toLowerCase().includes(search.toLowerCase()),
-  );
+  const {
+    data: dashboard,
+    isLoading,
+    isFetching,
+  } = useDashboardQuery();
+
+  /*
+   * API:
+   * GET /patient/dashboard
+   *
+   * dashboard.data.specialty_groups
+   */
+  const specialtyGroups =
+    dashboard?.data?.specialty_groups || [];
+
+  /*
+   * Search specialty groups
+   */
+  const filteredSpecialties = useMemo(() => {
+    const searchText = search.trim().toLowerCase();
+
+    if (!searchText) {
+      return specialtyGroups;
+    }
+
+    return specialtyGroups.filter(item =>
+      String(item?.title || '')
+        .toLowerCase()
+        .includes(searchText),
+    );
+  }, [specialtyGroups, search]);
+
+  /*
+   * Loading
+   */
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator
+          size="large"
+          color={colors.primary}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
+      {/* HEADER */}
       <View style={styles.header}>
-        <View style={[styles.row, {gap: 0}]}>
+        <View style={styles.row}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            style={styles.back}>
-            <Feather name="arrow-left" size={18} color="#060D1F" />
+            style={styles.back}
+            activeOpacity={0.8}>
+            <Feather
+              name="arrow-left"
+              size={19}
+              color="#060D1F"
+            />
           </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>{t('allSpecialties')}</Text>
+          <View>
+            <Text style={styles.headerTitle}>
+              {t('allSpecialties') || 'All Specialities'}
+            </Text>
+          </View>
         </View>
       </View>
 
-      {/* SEARCH */}
-      <View style={styles.searchBox}>
-        <Icon name="search" size={16} color="#888" />
-        <TextInput
-          placeholder={t('searchSpecialties')}
-          value={search}
-          onChangeText={setSearch}
-          style={styles.input}
-        />
-      </View>
-
+      {/* SPECIALITIES */}
       <FlatList
-        data={filtered}
+        data={filteredSpecialties}
         numColumns={3}
-        keyExtractor={(item, i) => i.toString()}
-        contentContainerStyle={{paddingHorizontal: 16, paddingBottom: 20}}
-        columnWrapperStyle={{
-          gap: 16,
-          marginBottom: 16,
-        }}
-        renderItem={({item}) => (
+        keyExtractor={(item, index) =>
+          String(item?.id ?? index)
+        }
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={
+          styles.listContent
+        }
+        columnWrapperStyle={styles.columnWrapper}
+        renderItem={({ item }) => (
           <TouchableOpacity
+            activeOpacity={0.85}
             style={styles.card}
-            onPress={() =>
-              navigation.navigate('BrowseByDoctors', {
-                specialty: item.name,
-              })
-            }>
+            onPress={() => {
+              if (!item?.id) {
+                return;
+              }
+
+              navigation.navigate(
+                'BrowseByDoctors',
+                {
+                  specialty_group_id: item?.id,
+                  search: item.title,
+                },
+              );
+            }}>
+            {/* IMAGE / DEFAULT ICON */}
             <View style={styles.iconWrap}>
-              <Image source={item.icon} style={styles.icon} />
+              {item?.image_url ? (
+                <Image
+                  source={{
+                    uri: item.image_url,
+                  }}
+                  style={styles.icon}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Feather
+                  name="heart"
+                  size={24}
+                  color={colors.primary}
+                />
+              )}
             </View>
-            <Text style={styles.name}>{item.name}</Text>
+
+            {/* TITLE */}
+            <Text
+              style={styles.name}
+              numberOfLines={2}>
+              {item?.title || 'Speciality'}
+            </Text>
           </TouchableOpacity>
         )}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIcon}>
+              <Feather
+                name="search"
+                size={24}
+                color="#98A2B3"
+              />
+            </View>
+
+            <Text style={styles.emptyTitle}>
+              No specialities found
+            </Text>
+
+            <Text style={styles.emptyText}>
+              Try searching for another speciality.
+            </Text>
+          </View>
+        }
       />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {flex: 1, backgroundColor: '#F4F7FD'},
-
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: 60,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    backgroundColor: '#fff',
+  container: {
+    flex: 1,
+    backgroundColor: '#F4F7FD',
   },
 
-  back: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  loadingContainer: {
+    flex: 1,
     backgroundColor: '#F4F7FD',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
   },
 
-  headerTitle: {
-    fontFamily: fonts.bold,
-    fontSize: 20,
-    fontWeight: '700',
-    color: colors.textPrimary,
+  header: {
+    paddingTop: 58,
+    paddingHorizontal: 16,
+    paddingBottom: 18,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEF1F5',
+    marginBottom: 20,
   },
 
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
   },
 
-  content: {
-    padding: 16,
+  back: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: '#F4F7FD',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
 
-  badge: {
-    backgroundColor: '#DFF5E8',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
+  headerTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 20,
+    color: colors.textPrimary,
   },
 
-  badgeText: {
-    color: colors.success,
-    fontWeight: '600',
+  headerSubtitle: {
+    marginTop: 2,
+    fontFamily: fonts.medium,
     fontSize: 12,
+    color: '#98A2B3',
   },
 
   searchBox: {
+    height: 48,
+    marginHorizontal: 16,
+    marginTop: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#EEF1F5',
+    paddingHorizontal: 14,
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    margin: 16,
-    padding: 5,
-    paddingHorizontal: 22,
-    borderRadius: 12,
     alignItems: 'center',
   },
 
   input: {
-    marginLeft: 8,
-    paddingRight: 32,
+    flex: 1,
+    marginLeft: 9,
+    paddingVertical: 0,
     fontFamily: fonts.medium,
     color: colors.textPrimary,
-    fontSize: 15,
-    fontWeight: '700',
-    width: '100%',
+    fontSize: 14,
   },
 
-  grid: {
-    paddingHorizontal: 16,
-    flexWrap: 'wrap',
-  },
-
-  card: {
-    //   flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    marginHorizontal: 0,
-    width: '30%',
-  },
-
-  iconWrap: {
-    backgroundColor: '#EEF2F7',
-    borderRadius: 12,
-    marginBottom: 8,
-    //   width: 70,
-    //   height: 70,
+  clearButton: {
+    width: 30,
+    height: 30,
     justifyContent: 'center',
     alignItems: 'center',
   },
 
+  resultHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+
+  resultCount: {
+    fontFamily: fonts.semiBold,
+    fontSize: 13,
+    color: '#667085',
+  },
+
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 30,
+  },
+
+  columnWrapper: {
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+
+  card: {
+    width: '31.5%',
+    minHeight: 116,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#EEF1F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 13,
+  },
+
+  iconWrap: {
+    borderRadius: 15,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 9,
+  },
+
   icon: {
-    width: 60,
-    height: 60,
+    width: 45,
+    height: 45,
+    borderRadius: 10,
   },
 
   name: {
-    fontWeight: '600',
-    fontSize: 14,
+    fontFamily: fonts.semiBold,
+    fontSize: 12,
+    lineHeight: 16,
     textAlign: 'center',
     color: colors.textPrimary,
+  },
+
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 80,
+    paddingHorizontal: 30,
+  },
+
+  emptyIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+
+  emptyTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 16,
+    color: colors.textPrimary,
+  },
+
+  emptyText: {
+    marginTop: 5,
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    color: '#98A2B3',
+    textAlign: 'center',
   },
 });

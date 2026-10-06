@@ -22,6 +22,12 @@ import ManageProfilesModal from '../../components/common/ManageProfilesModal';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 import {
+  useStatesQuery,
+  useDistrictsQuery,
+  useCitiesQuery,
+} from '../../hooks/queries/useLookupQueries';
+
+import {
   useProfilesQuery,
   useActiveProfileQuery,
 } from '../../hooks/queries/useProfileQueries';
@@ -33,10 +39,6 @@ import {
   useVerifyMobileChangeOtpMutation,
 } from '../../hooks/queries/useProfileMutations';
 
-import {
-  useStatesQuery,
-  useCitiesQuery,
-} from '../../hooks/queries/useLookupQueries';
 import { setFamilyMemberFlow } from '../../store/authSlice';
 import { useDispatch } from 'react-redux';
 import { useQueryClient } from '@tanstack/react-query';
@@ -47,8 +49,10 @@ export default function ProfileScreen({ navigation }) {
 
   const { data: profilesResponse, isLoading: profilesLoading } =
     useProfilesQuery();
+
   const { data: activeProfileResponse, isLoading: activeProfileLoading } =
     useActiveProfileQuery();
+
   const { mutateAsync: updateProfile, isPending: updatingProfile } =
     useUpdateProfileMutation();
 
@@ -68,7 +72,10 @@ export default function ProfileScreen({ navigation }) {
   } = useVerifyMobileChangeOtpMutation();
 
   const profiles =
-    profilesResponse?.profiles || profilesResponse?.data?.profiles || [];
+    profilesResponse?.profiles ||
+    profilesResponse?.data?.profiles ||
+    [];
+
   const activeProfile =
     activeProfileResponse?.profile ||
     activeProfileResponse?.data?.profile ||
@@ -79,7 +86,8 @@ export default function ProfileScreen({ navigation }) {
   const [showGenderModal, setShowGenderModal] = useState(false);
   const [showRelationshipModal, setShowRelationshipModal] = useState(false);
 
-  const [showChangeMobileModal, setShowChangeMobileModal] = useState(false);
+  const [showChangeMobileModal, setShowChangeMobileModal] =
+    useState(false);
 
   const [newMobile, setNewMobile] = useState('');
   const [confirmNewMobile, setConfirmNewMobile] = useState('');
@@ -92,6 +100,67 @@ export default function ProfileScreen({ navigation }) {
 
   const [mobileChangeError, setMobileChangeError] = useState('');
   const [mobileChangeStep, setMobileChangeStep] = useState('idle');
+
+  const [selectedStateId, setSelectedStateId] = useState(null);
+  const [selectedDistrictId, setSelectedDistrictId] = useState(null);
+
+  const [showStateModal, setShowStateModal] = useState(false);
+  const [showDistrictModal, setShowDistrictModal] = useState(false);
+  const [showCityModal, setShowCityModal] = useState(false);
+
+  const [showGuardianTypeModal, setShowGuardianTypeModal] =
+    useState(false);
+
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  const genderOptions = ['Male', 'Female', 'Other'];
+
+  const relationshipOptions = [
+    { label: 'Spouse', value: 'spouse' },
+    { label: 'Child', value: 'child' },
+    { label: 'Parent', value: 'parent' },
+    { label: 'Sibling', value: 'sibling' },
+    { label: 'Other Dependent', value: 'other_dependent' },
+  ];
+
+  const guardianTypeOptions = [
+    { label: 'S/O', value: 'S/O' },
+    { label: 'D/O', value: 'D/O' },
+    { label: 'W/O', value: 'W/O' },
+    { label: 'C/O', value: 'C/O' },
+  ];
+
+  const [form, setForm] = useState({
+    fullName: '',
+    dob: '',
+    gender: '',
+    relationship: '',
+    guardianType: '',
+    guardianName: '',
+    email: '',
+    mobile: '',
+    emergencyPhone: '',
+    emergencyName: '',
+    emergencyRelation: '',
+
+    area: '',
+    street: '',
+
+    state: '',
+    stateId: null,
+
+    district: '',
+    districtId: null,
+
+    city: '',
+    cityId: null,
+
+    tehsil: '',
+    pincode: '',
+
+    aadhaar: '',
+    abha: '',
+  });
 
   useEffect(() => {
     if (mobileResendTimer <= 0) {
@@ -112,32 +181,29 @@ export default function ProfileScreen({ navigation }) {
     return () => clearInterval(timer);
   }, [mobileResendTimer]);
 
-  const genderOptions = ['Male', 'Female', 'Other'];
+  const { data: statesResponse } = useStatesQuery();
 
-  const [form, setForm] = useState({
-    fullName: '',
-    dob: '',
-    gender: '',
-    relationship: '',
-    guardianType: '',
-    guardianName: '',
-    email: '',
-    mobile: '',
-    emergencyPhone: '',
-    emergencyName: '',
-    emergencyRelation: '',
-    area: '',
-    street: '',
-    state: '',
-    stateId: null,
-    city: '',
-    cityId: null,
-    tehsil: '',
-    district: '',
-    pincode: '',
-    aadhaar: '',
-    abha: '',
+  const {
+    data: districtsResponse,
+    isLoading: districtsLoading,
+  } = useDistrictsQuery(selectedStateId);
+
+  const {
+    data: citiesResponse,
+    isLoading: citiesLoading,
+  } = useCitiesQuery({
+    stateId: selectedStateId,
+    districtId: selectedDistrictId,
   });
+
+  const states =
+    statesResponse?.data?.states || [];
+
+  const districts =
+    districtsResponse?.data?.districts || [];
+
+  const cities =
+    citiesResponse?.data?.cities || [];
 
   useEffect(() => {
     if (!activeProfile) {
@@ -150,31 +216,52 @@ export default function ProfileScreen({ navigation }) {
 
     setForm({
       fullName: activeProfile.full_name || '',
-      dob: activeProfile.dob ? formatDateForDisplay(activeProfile.dob) : '',
+      dob: activeProfile.dob
+        ? formatDateForDisplay(activeProfile.dob)
+        : '',
       gender: activeProfile.gender || '',
       relationship: activeProfile.relationship || '',
       guardianType: activeProfile.guardian_type || '',
       guardianName: activeProfile.guardian_name || '',
       email: activeProfile.email || '',
       mobile: activeProfile.mobile || '',
+
       emergencyPhone: emergency.mobile || '',
       emergencyName: emergency.name || '',
       emergencyRelation: emergency.relation || '',
+
       area: address.street || '',
       street: address.street || '',
+
       state: address.state_name || '',
       stateId: address.state_id || null,
+
+      district:
+        address.district_name ||
+        address.district ||
+        '',
+      districtId: address.district_id || null,
+
       city: address.city_name || '',
       cityId: address.city_id || null,
+
       tehsil: address.tehsil || '',
-      district: address.district || '',
       pincode: address.pin_code || '',
+
       aadhaar: identity.aadhaar_mask || '',
       abha: identity.abha_mask || '',
     });
 
     if (address.state_id) {
       setSelectedStateId(address.state_id);
+    } else {
+      setSelectedStateId(null);
+    }
+
+    if (address.district_id) {
+      setSelectedDistrictId(address.district_id);
+    } else {
+      setSelectedDistrictId(null);
     }
   }, [activeProfile]);
 
@@ -211,52 +298,32 @@ export default function ProfileScreen({ navigation }) {
     }));
   };
 
-  const relationshipOptions = [
-    { label: 'Spouse', value: 'spouse' },
-    { label: 'Child', value: 'child' },
-    { label: 'Parent', value: 'parent' },
-    { label: 'Sibling', value: 'sibling' },
-    { label: 'Other Dependent', value: 'other_dependent' },
-  ];
-
-  const guardianTypeOptions = [
-    { label: 'S/O', value: 'S/O' },
-    { label: 'D/O', value: 'D/O' },
-    { label: 'W/O', value: 'W/O' },
-    { label: 'C/O', value: 'C/O' },
-  ];
-
-  const [selectedStateId, setSelectedStateId] = useState(null);
-  const [showStateModal, setShowStateModal] = useState(false);
-  const [showCityModal, setShowCityModal] = useState(false);
-  const [showGuardianTypeModal, setShowGuardianTypeModal] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-
-  const { data: statesResponse } = useStatesQuery();
-  const { data: citiesResponse } = useCitiesQuery(selectedStateId);
-
-  const states = statesResponse?.data?.states || [];
-  const cities = citiesResponse?.data?.cities || [];
-
   const handleSaveProfile = async () => {
     const aadhaar = (form.aadhaar || '').replace(/\s/g, '');
     const abha = (form.abha || '').replace(/\D/g, '');
+
     try {
       const payload = {
         full_name: form.fullName,
+
         dob: convertDobToApiFormat(form.dob),
+
         gender: form.gender,
+
         email: form.email || undefined,
+
         guardian_type: form.guardianType || '',
+
         guardian_name: form.guardianName || '',
+
         mobile: form.mobile,
 
         address: {
           street: form.area || '',
           area: '',
-          city_id: form.cityId,
-          state_id: form.stateId,
-          district: form.district || '',
+          state_id: form.stateId || null,
+          district_id: form.districtId || null,
+          city_id: form.cityId || null,
           tehsil: form.tehsil || '',
           pin_code: form.pincode || '',
         },
@@ -268,22 +335,33 @@ export default function ProfileScreen({ navigation }) {
         },
       };
 
-      if (aadhaar && !aadhaar.includes('*') && aadhaar.length === 12) {
+      if (
+        aadhaar &&
+        !aadhaar.includes('*') &&
+        aadhaar.length === 12
+      ) {
         payload.aadhaar_no = aadhaar;
       }
 
-      if (abha && !abha.includes('*') && abha.length === 14) {
+      if (
+        abha &&
+        !abha.includes('*') &&
+        abha.length === 14
+      ) {
         payload.abha_no = abha;
       }
 
       await updateProfile(payload);
+
       setShowSuccessModal(true);
     } catch (error) {
       console.log('UPDATE PROFILE ERROR:', error);
 
       Alert.alert(
         'Error',
-        error?.error?.message || error?.message || 'Unable to update profile.',
+        error?.error?.message ||
+        error?.message ||
+        'Unable to update profile.',
       );
     }
   };
@@ -325,7 +403,10 @@ export default function ProfileScreen({ navigation }) {
         return 'Patient account could not be found.';
 
       default:
-        return message || 'Unable to change mobile number. Please try again.';
+        return (
+          message ||
+          'Unable to change mobile number. Please try again.'
+        );
     }
   };
 
@@ -341,45 +422,67 @@ export default function ProfileScreen({ navigation }) {
       const mask = data?.mobile_mask;
 
       if (!requestId) {
-        throw new Error('OTP request ID was not returned.');
+        throw new Error(
+          'OTP request ID was not returned.',
+        );
       }
 
       setMobileOtpRequestId(requestId);
       setMobileMask(mask || '');
+
       setNewMobile('');
       setConfirmNewMobile('');
       setMobileOtp('');
+
       setMobileResendTimer(30);
 
       setMobileChangeStep('verify');
+
       setShowChangeMobileModal(true);
     } catch (error) {
-      console.log('SEND MOBILE CHANGE OTP ERROR:', error);
+      console.log(
+        'SEND MOBILE CHANGE OTP ERROR:',
+        error,
+      );
 
-      setMobileChangeError(getMobileChangeError(error));
+      setMobileChangeError(
+        getMobileChangeError(error),
+      );
     }
   };
 
   const handleResendMobileOtp = async () => {
-    if (!mobileOtpRequestId || mobileResendTimer > 0 || resendingMobileOtp) {
+    if (
+      !mobileOtpRequestId ||
+      mobileResendTimer > 0 ||
+      resendingMobileOtp
+    ) {
       return;
     }
 
     try {
       setMobileChangeError('');
 
-      const response = await resendMobileChangeOtp(mobileOtpRequestId);
+      const response =
+        await resendMobileChangeOtp(
+          mobileOtpRequestId,
+        );
 
       const data = response?.data || response;
 
       if (data?.otp_request_id) {
-        setMobileOtpRequestId(data.otp_request_id);
+        setMobileOtpRequestId(
+          data.otp_request_id,
+        );
       }
 
       setMobileOtp('');
       setMobileResendTimer(30);
     } catch (error) {
-      console.log('RESEND MOBILE OTP ERROR:', error);
+      console.log(
+        'RESEND MOBILE OTP ERROR:',
+        error,
+      );
 
       const code =
         error?.error?.code ||
@@ -387,105 +490,133 @@ export default function ProfileScreen({ navigation }) {
 
       if (code === 'OTP_RESEND_COOLDOWN') {
         const retryAfter =
-          error?.error?.details?.retry_after_seconds ||
-          error?.response?.data?.error?.details?.retry_after_seconds ||
+          error?.error?.details
+            ?.retry_after_seconds ||
+          error?.response?.data?.error
+            ?.details?.retry_after_seconds ||
           30;
 
-        setMobileResendTimer(Number(retryAfter));
+        setMobileResendTimer(
+          Number(retryAfter),
+        );
       }
 
-      setMobileChangeError(getMobileChangeError(error));
+      setMobileChangeError(
+        getMobileChangeError(error),
+      );
     }
   };
 
-const handleVerifyMobileChange = async () => {
-  setMobileChangeError('');
-
-  const cleanNewMobile = (newMobile || '').replace(/\D/g, '');
-  const cleanConfirmMobile = (confirmNewMobile || '').replace(/\D/g, '');
-  const cleanOtp = (mobileOtp || '').replace(/\D/g, '');
-
-  // Validate new mobile
-  if (!/^[6-9]\d{9}$/.test(cleanNewMobile)) {
-    setMobileChangeError('Please enter a valid 10-digit mobile number.');
-    return;
-  }
-
-  // Confirm new mobile
-  if (cleanNewMobile !== cleanConfirmMobile) {
-    setMobileChangeError('New mobile numbers do not match.');
-    return;
-  }
-
-  // OTP
-  if (!cleanOtp || cleanOtp.length !== 4) {
-    setMobileChangeError('Please enter the 4-digit OTP.');
-    return;
-  }
-
-  // OTP request ID
-  if (!mobileOtpRequestId) {
-    setMobileChangeError(
-      'OTP request has expired. Please request a new OTP.',
-    );
-    return;
-  }
-
-  try {
-    const response = await verifyMobileChangeOtp({
-      // IMPORTANT: backend expects snake_case
-      new_mobile: cleanNewMobile,
-      otp: cleanOtp,
-      otp_request_id: mobileOtpRequestId,
-    });
-
-    const data = response?.data || response;
-
-    console.log('MOBILE CHANGE SUCCESS:', data);
-
-    // Backend returns refreshed profiles[]
-    // React Query will refresh the profile data.
-    await queryClient.invalidateQueries({
-      queryKey: ['patient-profiles'],
-    });
-
-    await queryClient.invalidateQueries({
-      queryKey: ['active-profile'],
-    });
-
-    // Update form display immediately
-    setForm(prev => ({
-      ...prev,
-      mobile: cleanNewMobile,
-    }));
-
-    // Close modal
-    setShowChangeMobileModal(false);
-
-    // Clear temporary mobile-change state
-    setNewMobile('');
-    setConfirmNewMobile('');
-    setMobileOtp('');
-    setMobileOtpRequestId(null);
-    setMobileMask('');
-    setMobileResendTimer(0);
+  const handleVerifyMobileChange = async () => {
     setMobileChangeError('');
 
-    // Show success
-    setShowSuccessModal(true);
-  } catch (error) {
-    console.log('VERIFY MOBILE CHANGE ERROR:', error);
+    const cleanNewMobile =
+      (newMobile || '').replace(/\D/g, '');
 
-    setMobileChangeError(getMobileChangeError(error));
-  }
-};
+    const cleanConfirmMobile =
+      (confirmNewMobile || '').replace(/\D/g, '');
+
+    const cleanOtp =
+      (mobileOtp || '').replace(/\D/g, '');
+
+    // Validate new mobile
+    if (!/^[6-9]\d{9}$/.test(cleanNewMobile)) {
+      setMobileChangeError(
+        'Please enter a valid 10-digit mobile number.',
+      );
+      return;
+    }
+
+    // Confirm new mobile
+    if (
+      cleanNewMobile !==
+      cleanConfirmMobile
+    ) {
+      setMobileChangeError(
+        'New mobile numbers do not match.',
+      );
+      return;
+    }
+
+    // OTP - 6 digits
+    if (!cleanOtp || cleanOtp.length !== 4) {
+      setMobileChangeError(
+        'Please enter the 6-digit OTP.',
+      );
+      return;
+    }
+
+    // OTP request ID
+    if (!mobileOtpRequestId) {
+      setMobileChangeError(
+        'OTP request has expired. Please request a new OTP.',
+      );
+      return;
+    }
+
+    try {
+      const response =
+        await verifyMobileChangeOtp({
+          new_mobile: cleanNewMobile,
+          otp: cleanOtp,
+          otp_request_id: mobileOtpRequestId,
+        });
+
+      const data = response?.data || response;
+
+      console.log(
+        'MOBILE CHANGE SUCCESS:',
+        data,
+      );
+
+      await queryClient.invalidateQueries({
+        queryKey: ['patient-profiles'],
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: ['active-profile'],
+      });
+
+      setForm(prev => ({
+        ...prev,
+        mobile: cleanNewMobile,
+      }));
+
+      setShowChangeMobileModal(false);
+
+      setNewMobile('');
+      setConfirmNewMobile('');
+      setMobileOtp('');
+      setMobileOtpRequestId(null);
+      setMobileMask('');
+      setMobileResendTimer(0);
+      setMobileChangeStep('idle');
+      setMobileChangeError('');
+
+      setShowSuccessModal(true);
+    } catch (error) {
+      console.log(
+        'VERIFY MOBILE CHANGE ERROR:',
+        error,
+      );
+
+      setMobileChangeError(
+        getMobileChangeError(error),
+      );
+    }
+  };
 
   if (activeProfileLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator
+          size="large"
+          color={colors.primary}
+        />
 
-        <Text style={styles.loadingText}>Loading profile...</Text>
+        <Text style={styles.loadingText}>
+          Loading profile...
+        </Text>
       </View>
     );
   }
@@ -498,27 +629,42 @@ const handleVerifyMobileChange = async () => {
           <View style={styles.headerContent}>
             <TouchableOpacity
               style={styles.backBtn}
-              onPress={() => navigation.goBack()}
-            >
-              <Feather name="arrow-left" size={22} color="#fff" />
+              onPress={() =>
+                navigation.goBack()
+              }>
+              <Feather
+                name="arrow-left"
+                size={22}
+                color="#fff"
+              />
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.settingBtn}
-              onPress={() => navigation.navigate('SettingsScreen')}
-            >
-              <Feather name="settings" size={22} color="#fff" />
+              onPress={() =>
+                navigation.navigate(
+                  'SettingsScreen',
+                )
+              }>
+              <Feather
+                name="settings"
+                size={22}
+                color="#fff"
+              />
             </TouchableOpacity>
           </View>
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => setProfileModal(true)}
-          >
+            onPress={() =>
+              setProfileModal(true)
+            }>
             <View style={styles.row}>
               <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {(activeProfile?.full_name || 'P')
+                <Text
+                  style={styles.avatarText}>
+                  {(activeProfile?.full_name ||
+                    'P')
                     .split(' ')
                     .map(x => x[0])
                     .join('')
@@ -526,16 +672,31 @@ const handleVerifyMobileChange = async () => {
                 </Text>
               </View>
 
-              <View style={{ flex: 1 }}>
-                <View style={[styles.row, { gap: 5 }]}>
-                  <Text style={styles.name}>
-                    {activeProfile?.full_name || 'Complete Profile'}
+              <View
+                style={{ flex: 1 }}>
+                <View
+                  style={[
+                    styles.row,
+                    { gap: 5 },
+                  ]}>
+                  <Text
+                    style={styles.name}>
+                    {activeProfile?.full_name ||
+                      'Complete Profile'}
                   </Text>
-                  <Feather name="chevron-down" size={22} color="#fff" />
+
+                  <Feather
+                    name="chevron-down"
+                    size={22}
+                    color="#fff"
+                  />
                 </View>
 
-                <Text style={styles.phone}>
-                  {activeProfile?.mobile ? `+91 ${activeProfile.mobile}` : ''}
+                <Text
+                  style={styles.phone}>
+                  {activeProfile?.mobile
+                    ? `+91 ${activeProfile.mobile}`
+                    : ''}
                 </Text>
               </View>
             </View>
@@ -544,18 +705,27 @@ const handleVerifyMobileChange = async () => {
           <View style={styles.statsRow}>
             {[
               {
-                value: activeProfile?.stats?.appointments_count ?? 0,
+                value:
+                  activeProfile?.stats
+                    ?.appointments_count ??
+                  0,
                 label: 'APPOINTMENTS',
                 screen: 'Appointments',
               },
               {
-                value: activeProfile?.stats?.prescriptions_count ?? 0,
+                value:
+                  activeProfile?.stats
+                    ?.prescriptions_count ??
+                  0,
                 label: 'PRESCRIPTIONS',
                 screen: 'Records',
                 mode: 'Prescriptions',
               },
               {
-                value: activeProfile?.stats?.reports_count ?? 0,
+                value:
+                  activeProfile?.stats
+                    ?.reports_count ??
+                  0,
                 label: 'REPORTS',
                 screen: 'Records',
                 mode: 'reports',
@@ -566,17 +736,37 @@ const handleVerifyMobileChange = async () => {
                 activeOpacity={0.7}
                 style={styles.statBox}
                 onPress={() => {
-                  if (item.screen === 'Records') {
-                    navigation.navigate('Records', {
-                      mode: item.mode,
-                    });
+                  if (
+                    item.screen ===
+                    'Records'
+                  ) {
+                    navigation.navigate(
+                      'Records',
+                      {
+                        mode: item.mode,
+                      },
+                    );
                   } else {
-                    navigation.navigate(item.screen);
+                    navigation.navigate(
+                      item.screen,
+                    );
                   }
                 }}>
-                <Text style={styles.statValue}>{item.value}</Text>
-                <Text numberOfLines={1}
-                  minimumFontScale={0.7} style={styles.statLabel}>{item.label}</Text>
+                <Text
+                  style={
+                    styles.statValue
+                  }>
+                  {item.value}
+                </Text>
+
+                <Text
+                  numberOfLines={1}
+                  minimumFontScale={0.7}
+                  style={
+                    styles.statLabel
+                  }>
+                  {item.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -585,16 +775,24 @@ const handleVerifyMobileChange = async () => {
 
       <KeyboardAwareScrollView
         style={styles.content}
-        contentContainerStyle={{ paddingBottom: 180 }}
-      >
+        contentContainerStyle={{
+          paddingBottom: 180,
+        }}>
         {/* PERSONAL DETAILS */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Personal Details</Text>
+          <Text style={styles.cardTitle}>
+            Personal Details
+          </Text>
 
           <Input
             label="FULL NAME"
             value={form.fullName}
-            onChangeText={text => handleChange('fullName', text)}
+            onChangeText={text =>
+              handleChange(
+                'fullName',
+                text,
+              )
+            }
           />
 
           <Input
@@ -607,39 +805,56 @@ const handleVerifyMobileChange = async () => {
           />
 
           <TouchableOpacity
-            style={styles.changeMobileButton}
+            style={
+              styles.changeMobileButton
+            }
             activeOpacity={0.7}
-            onPress={handleStartMobileChange}
-            disabled={sendingMobileOtp}
-          >
+            onPress={
+              handleStartMobileChange
+            }
+            disabled={sendingMobileOtp}>
             <Feather
               name="edit-2"
               size={15}
               color={colors.primary}
             />
 
-            <Text style={styles.changeMobileButtonText}>
-              {sendingMobileOtp ? 'Sending code...' : 'Change mobile number'}
+            <Text
+              style={
+                styles.changeMobileButtonText
+              }>
+              {sendingMobileOtp
+                ? 'Sending code...'
+                : 'Change mobile number'}
             </Text>
           </TouchableOpacity>
 
-          {activeProfile?.relationship !== 'self' && (
-            <TouchableOpacity activeOpacity={1}>
-              <View pointerEvents="none">
-                <Input
-                  label="RELATIONSHIP"
-                  value={
-                    relationshipOptions.find(
-                      item => item.value === form.relationship,
-                    )?.label || ''
-                  }
-                  placeholder="Select Relationship"
-                  editable={false}
-                  disabled
-                />
-              </View>
-            </TouchableOpacity>
-          )}
+          {activeProfile?.relationship !==
+            'self' && (
+              <TouchableOpacity
+                activeOpacity={1}
+                onPress={() =>
+                  setShowRelationshipModal(
+                    true,
+                  )
+                }>
+                <View
+                  pointerEvents="none">
+                  <Input
+                    label="RELATIONSHIP"
+                    value={
+                      relationshipOptions.find(
+                        item =>
+                          item.value ===
+                          form.relationship,
+                      )?.label || ''
+                    }
+                    placeholder="Select Relationship"
+                    editable={false}
+                  />
+                </View>
+              </TouchableOpacity>
+            )}
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
@@ -647,19 +862,35 @@ const handleVerifyMobileChange = async () => {
                 label="DOB"
                 type="date"
                 value={form.dob}
-                onChangeText={text => handleChange('dob', text)}
+                onChangeText={text =>
+                  handleChange(
+                    'dob',
+                    text,
+                  )
+                }
               />
             </View>
-            <View style={{ width: 10 }} />
-            <View style={{ flex: 1 }}>
+
+            <View
+              style={{ width: 10 }}
+            />
+
+            <View
+              style={{ flex: 1 }}>
               <TouchableOpacity
                 activeOpacity={1}
-                onPress={() => setShowGenderModal(true)}
-              >
-                <View pointerEvents="none">
+                onPress={() =>
+                  setShowGenderModal(
+                    true,
+                  )
+                }>
+                <View
+                  pointerEvents="none">
                   <Input
                     label="GENDER"
-                    value={form.gender}
+                    value={
+                      form.gender
+                    }
                     placeholder="Select Gender"
                     editable={false}
                   />
@@ -670,15 +901,22 @@ const handleVerifyMobileChange = async () => {
 
           <View style={styles.row}>
             {/* GUARDIAN TYPE */}
-            <View style={{ flex: 1 }}>
+            <View
+              style={{ flex: 1 }}>
               <TouchableOpacity
                 activeOpacity={1}
-                onPress={() => setShowGuardianTypeModal(true)}
-              >
-                <View pointerEvents="none">
+                onPress={() =>
+                  setShowGuardianTypeModal(
+                    true,
+                  )
+                }>
+                <View
+                  pointerEvents="none">
                   <Input
                     label="GUARDIAN TYPE (OPTIONAL)"
-                    value={form.guardianType}
+                    value={
+                      form.guardianType
+                    }
                     placeholder="Select"
                     editable={false}
                   />
@@ -686,15 +924,25 @@ const handleVerifyMobileChange = async () => {
               </TouchableOpacity>
             </View>
 
-            <View style={{ width: 12 }} />
+            <View
+              style={{ width: 12 }}
+            />
 
             {/* GUARDIAN NAME */}
-            <View style={{ flex: 1 }}>
+            <View
+              style={{ flex: 1 }}>
               <Input
                 label="GUARDIAN NAME (OPTIONAL)"
                 placeholder="Guardian Name"
-                value={form.guardianName}
-                onChangeText={text => handleChange('guardianName', text)}
+                value={
+                  form.guardianName
+                }
+                onChangeText={text =>
+                  handleChange(
+                    'guardianName',
+                    text,
+                  )
+                }
               />
             </View>
           </View>
@@ -702,18 +950,27 @@ const handleVerifyMobileChange = async () => {
           <Input
             label="EMAIL"
             value={form.email}
-            onChangeText={text => handleChange('email', text)}
+            onChangeText={text =>
+              handleChange(
+                'email',
+                text,
+              )
+            }
           />
 
           <Input
             label="EMERGENCY CONTACT NUMBER"
             keyboardType="number-pad"
             maxLength={10}
-            value={form.emergencyPhone}
+            value={
+              form.emergencyPhone
+            }
             onChangeText={text =>
               handleChange(
                 'emergencyPhone',
-                text.replace(/\D/g, '').slice(0, 10),
+                text
+                  .replace(/\D/g, '')
+                  .slice(0, 10),
               )
             }
           />
@@ -721,21 +978,31 @@ const handleVerifyMobileChange = async () => {
 
         {/* ADDRESS */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Address</Text>
+          <Text style={styles.cardTitle}>
+            Address
+          </Text>
 
           <Input
             label="ADDRESS"
             value={form.area}
-            onChangeText={text => handleChange('area', text)}
+            onChangeText={text =>
+              handleChange(
+                'area',
+                text,
+              )
+            }
           />
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
+              {/* STATE */}
               <TouchableOpacity
                 activeOpacity={1}
-                onPress={() => setShowStateModal(true)}
-              >
-                <View pointerEvents="none">
+                onPress={() =>
+                  setShowStateModal(true)
+                }>
+                <View
+                  pointerEvents="none">
                   <Input
                     label="STATE"
                     value={form.state}
@@ -745,18 +1012,33 @@ const handleVerifyMobileChange = async () => {
                 </View>
               </TouchableOpacity>
             </View>
-            <View style={{ width: 10 }} />
+
+            <View
+              style={{ width: 12 }}
+            />
+
             <View style={{ flex: 1 }}>
+              {/* DISTRICT */}
               <TouchableOpacity
                 activeOpacity={1}
-                disabled={!form.state}
-                onPress={() => setShowCityModal(true)}
-              >
-                <View pointerEvents="none">
+                disabled={!form.stateId}
+                onPress={() =>
+                  setShowDistrictModal(
+                    true,
+                  )
+                }>
+                <View
+                  pointerEvents="none">
                   <Input
-                    label="CITY"
-                    value={form.city}
-                    placeholder="Select City"
+                    label="DISTRICT"
+                    value={
+                      form.district
+                    }
+                    placeholder={
+                      form.stateId
+                        ? 'Select District'
+                        : 'Select State First'
+                    }
                     editable={false}
                   />
                 </View>
@@ -764,265 +1046,664 @@ const handleVerifyMobileChange = async () => {
             </View>
           </View>
 
+
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
+              {/* CITY */}
+              <TouchableOpacity
+                activeOpacity={1}
+                disabled={
+                  !form.districtId
+                }
+                onPress={() =>
+                  setShowCityModal(true)
+                }>
+                <View
+                  pointerEvents="none">
+                  <Input
+                    label="CITY"
+                    value={form.city}
+                    placeholder={
+                      form.districtId
+                        ? 'Select City'
+                        : 'Select District First'
+                    }
+                    editable={false}
+                  />
+                </View>
+              </TouchableOpacity>
+            </View>
+
+            <View
+              style={{ width: 12 }}
+            />
+            <View style={{ flex: 1 }}>
+              {/* TEHSIL */}
               <Input
                 label="TEHSIL"
                 value={form.tehsil}
-                onChangeText={text => handleChange('tehsil', text)}
+                onChangeText={text =>
+                  handleChange(
+                    'tehsil',
+                    text,
+                  )
+                }
               />
             </View>
-            <View style={{ width: 10 }} />
-            <View style={{ flex: 1 }}>
-              <Input
-                label="DISTRICT"
-                value={form.district}
-                onChangeText={text => handleChange('district', text)}
-              />
-            </View>
+
           </View>
 
+          {/* PIN CODE */}
           <Input
             label="PIN CODE"
             keyboardType="number-pad"
             maxLength={6}
             value={form.pincode}
             onChangeText={text =>
-              handleChange('pincode', text.replace(/\D/g, '').slice(0, 6))
+              handleChange(
+                'pincode',
+                text
+                  .replace(/\D/g, '')
+                  .slice(0, 6),
+              )
             }
           />
         </View>
 
+        {/* IDENTITY */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Identity</Text>
+          <Text style={styles.cardTitle}>
+            Identity
+          </Text>
+
           <Input
             label="AADHAAR"
             value={form.aadhaar}
             maxLength={12}
             onChangeText={text =>
-              handleChange('aadhaar', text.replace(/\D/g, '').slice(0, 12))
+              handleChange(
+                'aadhaar',
+                text
+                  .replace(/\D/g, '')
+                  .slice(0, 12),
+              )
             }
           />
 
           <Input
             label="ABHA"
             value={form.abha}
+            maxLength={14}
             onChangeText={text =>
-              handleChange('abha', text.replace(/\D/g, '').slice(0, 14))
+              handleChange(
+                'abha',
+                text
+                  .replace(/\D/g, '')
+                  .slice(0, 14),
+              )
             }
           />
         </View>
       </KeyboardAwareScrollView>
+
       <View style={styles.buttonWrap}>
         <Button
-          title={updatingProfile ? 'Saving...' : 'Save Changes'}
+          title={
+            updatingProfile
+              ? 'Saving...'
+              : 'Save Changes'
+          }
           onPress={handleSaveProfile}
           disabled={updatingProfile}
         />
       </View>
 
+      {/* GUARDIAN TYPE MODAL */}
       <Modal
         visible={showGuardianTypeModal}
         transparent
         animationType="slide"
         statusBarTranslucent
-        onRequestClose={() => setShowGuardianTypeModal(false)}
-      >
+        onRequestClose={() =>
+          setShowGuardianTypeModal(
+            false,
+          )
+        }>
         <TouchableOpacity
           style={styles.overlay}
           activeOpacity={1}
-          onPress={() => setShowGuardianTypeModal(false)}
-        >
-          <TouchableOpacity activeOpacity={1} style={styles.sheet}>
-            <View style={styles.handle} />
+          onPress={() =>
+            setShowGuardianTypeModal(
+              false,
+            )
+          }>
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.sheet}>
+            <View
+              style={styles.handle}
+            />
 
-            <Text style={[styles.cardTitle, { fontSize: 20 }]}>
+            <Text
+              style={[
+                styles.cardTitle,
+                { fontSize: 20 },
+              ]}>
               Select Guardian Type
             </Text>
 
-            {guardianTypeOptions.map(item => (
-              <TouchableOpacity
-                key={item.value}
-                style={styles.menuRow}
-                onPress={() => {
-                  handleChange('guardianType', item.value);
+            {guardianTypeOptions.map(
+              item => (
+                <TouchableOpacity
+                  key={item.value}
+                  style={
+                    styles.menuRow
+                  }
+                  onPress={() => {
+                    handleChange(
+                      'guardianType',
+                      item.value,
+                    );
 
-                  setShowGuardianTypeModal(false);
-                }}
-              >
-                <Text style={styles.menuTitle}>{item.label}</Text>
+                    setShowGuardianTypeModal(
+                      false,
+                    );
+                  }}>
+                  <Text
+                    style={
+                      styles.menuTitle
+                    }>
+                    {item.label}
+                  </Text>
 
-                {form.guardianType === item.value && (
-                  <Feather name="check" size={20} color={colors.primary} />
-                )}
-              </TouchableOpacity>
-            ))}
+                  {form.guardianType ===
+                    item.value && (
+                      <Feather
+                        name="check"
+                        size={20}
+                        color={
+                          colors.primary
+                        }
+                      />
+                    )}
+                </TouchableOpacity>
+              ),
+            )}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
+      {/* SUCCESS MODAL */}
       <Modal
         visible={showSuccessModal}
         transparent
         animationType="fade"
         statusBarTranslucent
-        onRequestClose={() => setShowSuccessModal(false)}
-      >
-        <View style={styles.successOverlay}>
-          <View style={styles.successModal}>
-            {/* SUCCESS ICON */}
-            <View style={styles.successIcon}>
-              <Feather name="check" size={32} color="#fff" />
+        onRequestClose={() =>
+          setShowSuccessModal(
+            false,
+          )
+        }>
+        <View
+          style={
+            styles.successOverlay
+          }>
+          <View
+            style={
+              styles.successModal
+            }>
+            <View
+              style={
+                styles.successIcon
+              }>
+              <Feather
+                name="check"
+                size={32}
+                color="#fff"
+              />
             </View>
 
-            <Text style={styles.successTitle}>Profile Updated</Text>
+            <Text
+              style={
+                styles.successTitle
+              }>
+              Profile Updated
+            </Text>
 
-            <Text style={styles.successMessage}>
-              Your profile details have been updated successfully.
+            <Text
+              style={
+                styles.successMessage
+              }>
+              Your profile details have
+              been updated successfully.
             </Text>
 
             <TouchableOpacity
-              style={styles.successButton}
-              onPress={() => setShowSuccessModal(false)}
-            >
-              <Text style={styles.successButtonText}>Done</Text>
+              style={
+                styles.successButton
+              }
+              onPress={() =>
+                setShowSuccessModal(
+                  false,
+                )
+              }>
+              <Text
+                style={
+                  styles.successButtonText
+                }>
+                Done
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
 
-      {/* gender modal */}
+      {/* DISTRICT MODAL */}
+      <Modal
+        visible={showDistrictModal}
+        transparent
+        animationType="slide"
+        statusBarTranslucent
+        onRequestClose={() =>
+          setShowDistrictModal(
+            false,
+          )
+        }>
+        <TouchableOpacity
+          style={styles.overlay}
+          activeOpacity={1}
+          onPress={() =>
+            setShowDistrictModal(
+              false,
+            )
+          }>
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.sheet}>
+            <View
+              style={styles.handle}
+            />
+
+            <Text
+              style={[
+                styles.cardTitle,
+                { fontSize: 20 },
+              ]}>
+              Select District
+            </Text>
+
+            {districtsLoading ? (
+              <View
+                style={{
+                  paddingVertical: 30,
+                  alignItems:
+                    'center',
+                }}>
+                <ActivityIndicator
+                  size="small"
+                  color={
+                    colors.primary
+                  }
+                />
+              </View>
+            ) : districts.length ===
+              0 ? (
+              <Text
+                style={{
+                  paddingVertical: 25,
+                  textAlign:
+                    'center',
+                  color:
+                    colors.textSecondary,
+                }}>
+                No districts found
+              </Text>
+            ) : (
+              <ScrollView
+                showsVerticalScrollIndicator={
+                  false
+                }>
+                {districts.map(
+                  item => (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={
+                        styles.menuRow
+                      }
+                      onPress={() => {
+                        handleChange(
+                          'district',
+                          item.name,
+                        );
+
+                        handleChange(
+                          'districtId',
+                          item.id,
+                        );
+
+                        handleChange(
+                          'city',
+                          '',
+                        );
+
+                        handleChange(
+                          'cityId',
+                          null,
+                        );
+
+                        setSelectedDistrictId(
+                          item.id,
+                        );
+
+                        setShowDistrictModal(
+                          false,
+                        );
+                      }}>
+                      <Text
+                        style={
+                          styles.menuTitle
+                        }>
+                        {item.name}
+                      </Text>
+
+                      {form.districtId ===
+                        item.id && (
+                          <Feather
+                            name="check"
+                            size={20}
+                            color={
+                              colors.primary
+                            }
+                          />
+                        )}
+                    </TouchableOpacity>
+                  ),
+                )}
+              </ScrollView>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* GENDER MODAL */}
       <Modal
         visible={showGenderModal}
         transparent
         animationType="slide"
         statusBarTranslucent
-      >
+        onRequestClose={() =>
+          setShowGenderModal(false)
+        }>
         <TouchableOpacity
           style={styles.overlay}
           activeOpacity={1}
-          onPress={() => setShowGenderModal(false)}
-        >
-          <TouchableOpacity activeOpacity={1} style={styles.sheet}>
-            <View style={styles.handle} />
+          onPress={() =>
+            setShowGenderModal(false)
+          }>
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.sheet}>
+            <View
+              style={styles.handle}
+            />
 
-            <Text style={[styles.cardTitle, { fontSize: 20 }]}>
+            <Text
+              style={[
+                styles.cardTitle,
+                { fontSize: 20 },
+              ]}>
               Select Gender
             </Text>
 
-            {genderOptions.map(item => (
-              <TouchableOpacity
-                key={item}
-                style={styles.menuRow}
-                onPress={() => {
-                  handleChange('gender', item);
-                  setShowGenderModal(false);
-                }}
-              >
-                <Text style={styles.menuTitle}>{item}</Text>
+            {genderOptions.map(
+              item => (
+                <TouchableOpacity
+                  key={item}
+                  style={
+                    styles.menuRow
+                  }
+                  onPress={() => {
+                    handleChange(
+                      'gender',
+                      item,
+                    );
 
-                {form.gender === item && (
-                  <Feather name="check" size={20} color={colors.primary} />
-                )}
-              </TouchableOpacity>
-            ))}
+                    setShowGenderModal(
+                      false,
+                    );
+                  }}>
+                  <Text
+                    style={
+                      styles.menuTitle
+                    }>
+                    {item}
+                  </Text>
+
+                  {form.gender ===
+                    item && (
+                      <Feather
+                        name="check"
+                        size={20}
+                        color={
+                          colors.primary
+                        }
+                      />
+                    )}
+                </TouchableOpacity>
+              ),
+            )}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
-      {/* relationship modal */}
+      {/* RELATIONSHIP MODAL */}
       <Modal
         visible={showRelationshipModal}
         transparent
         animationType="slide"
         statusBarTranslucent
-      >
+        onRequestClose={() =>
+          setShowRelationshipModal(
+            false,
+          )
+        }>
         <TouchableOpacity
           style={styles.overlay}
           activeOpacity={1}
-          onPress={() => setShowRelationshipModal(false)}
-        >
-          <TouchableOpacity activeOpacity={1} style={styles.sheet}>
-            <View style={styles.handle} />
+          onPress={() =>
+            setShowRelationshipModal(
+              false,
+            )
+          }>
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.sheet}>
+            <View
+              style={styles.handle}
+            />
 
-            <Text style={[styles.cardTitle, { fontSize: 20 }]}>
+            <Text
+              style={[
+                styles.cardTitle,
+                { fontSize: 20 },
+              ]}>
               Select Relationship
             </Text>
 
             <TouchableOpacity
               style={styles.menuRow}
               onPress={() => {
-                handleChange('relationship', '');
-                setShowRelationshipModal(false);
-              }}
-            >
-              <Text style={styles.menuTitle}>Select Relationship</Text>
+                handleChange(
+                  'relationship',
+                  '',
+                );
 
-              {form.relationship === '' && (
-                <Feather name="check" size={20} color={colors.primary} />
-              )}
+                setShowRelationshipModal(
+                  false,
+                );
+              }}>
+              <Text
+                style={
+                  styles.menuTitle
+                }>
+                Select Relationship
+              </Text>
+
+              {form.relationship ===
+                '' && (
+                  <Feather
+                    name="check"
+                    size={20}
+                    color={
+                      colors.primary
+                    }
+                  />
+                )}
             </TouchableOpacity>
 
-            {relationshipOptions.map(item => (
-              <TouchableOpacity
-                key={item.value}
-                style={styles.menuRow}
-                onPress={() => {
-                  handleChange('relationship', item.value);
-                  setShowRelationshipModal(false);
-                }}
-              >
-                <Text style={styles.menuTitle}>{item.label}</Text>
+            {relationshipOptions.map(
+              item => (
+                <TouchableOpacity
+                  key={item.value}
+                  style={
+                    styles.menuRow
+                  }
+                  onPress={() => {
+                    handleChange(
+                      'relationship',
+                      item.value,
+                    );
 
-                {form.relationship === item.value && (
-                  <Feather name="check" size={20} color={colors.primary} />
-                )}
-              </TouchableOpacity>
-            ))}
+                    setShowRelationshipModal(
+                      false,
+                    );
+                  }}>
+                  <Text
+                    style={
+                      styles.menuTitle
+                    }>
+                    {item.label}
+                  </Text>
+
+                  {form.relationship ===
+                    item.value && (
+                      <Feather
+                        name="check"
+                        size={20}
+                        color={
+                          colors.primary
+                        }
+                      />
+                    )}
+                </TouchableOpacity>
+              ),
+            )}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
-      {/* state modal */}
+      {/* STATE MODAL */}
       <Modal
         visible={showStateModal}
         transparent
         animationType="slide"
         statusBarTranslucent
-      >
+        onRequestClose={() =>
+          setShowStateModal(false)
+        }>
         <TouchableOpacity
           style={styles.overlay}
           activeOpacity={1}
-          onPress={() => setShowStateModal(false)}
-        >
-          <TouchableOpacity activeOpacity={1} style={styles.sheet}>
-            <View style={styles.handle} />
+          onPress={() =>
+            setShowStateModal(false)
+          }>
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.sheet}>
+            <View
+              style={styles.handle}
+            />
 
-            <Text style={[styles.cardTitle, { fontSize: 20 }]}>
+            <Text
+              style={[
+                styles.cardTitle,
+                { fontSize: 20 },
+              ]}>
               Select State
             </Text>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              showsVerticalScrollIndicator={
+                false
+              }>
               {states.map(item => (
                 <TouchableOpacity
                   key={item.id}
-                  style={styles.menuRow}
+                  style={
+                    styles.menuRow
+                  }
                   onPress={() => {
-                    handleChange('state', item.name);
-                    handleChange('stateId', item.id);
+                    handleChange(
+                      'state',
+                      item.name,
+                    );
 
-                    handleChange('city', '');
-                    handleChange('cityId', null);
+                    handleChange(
+                      'stateId',
+                      item.id,
+                    );
 
-                    setSelectedStateId(item.id);
-                    setShowStateModal(false);
-                  }}
-                >
-                  <Text style={styles.menuTitle}>{item.name}</Text>
+                    // Reset district
+                    handleChange(
+                      'district',
+                      '',
+                    );
 
-                  {form.state === item.name && (
-                    <Feather name="check" size={20} color={colors.primary} />
-                  )}
+                    handleChange(
+                      'districtId',
+                      null,
+                    );
+
+                    // Reset city
+                    handleChange(
+                      'city',
+                      '',
+                    );
+
+                    handleChange(
+                      'cityId',
+                      null,
+                    );
+
+                    setSelectedStateId(
+                      item.id,
+                    );
+
+                    setSelectedDistrictId(
+                      null,
+                    );
+
+                    setShowStateModal(
+                      false,
+                    );
+                  }}>
+                  <Text
+                    style={
+                      styles.menuTitle
+                    }>
+                    {item.name}
+                  </Text>
+
+                  {form.state ===
+                    item.name && (
+                      <Feather
+                        name="check"
+                        size={20}
+                        color={
+                          colors.primary
+                        }
+                      />
+                    )}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -1030,57 +1711,126 @@ const handleVerifyMobileChange = async () => {
         </TouchableOpacity>
       </Modal>
 
-      {/* city modal */}
+      {/* CITY MODAL */}
       <Modal
         visible={showCityModal}
         transparent
         animationType="slide"
         statusBarTranslucent
-      >
+        onRequestClose={() =>
+          setShowCityModal(false)
+        }>
         <TouchableOpacity
           style={styles.overlay}
           activeOpacity={1}
-          onPress={() => setShowCityModal(false)}
-        >
-          <TouchableOpacity activeOpacity={1} style={styles.sheet}>
-            <View style={styles.handle} />
+          onPress={() =>
+            setShowCityModal(false)
+          }>
+          <TouchableOpacity
+            activeOpacity={1}
+            style={styles.sheet}>
+            <View
+              style={styles.handle}
+            />
 
-            <Text style={[styles.cardTitle, { fontSize: 20 }]}>
+            <Text
+              style={[
+                styles.cardTitle,
+                { fontSize: 20 },
+              ]}>
               Select City
             </Text>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {cities.map(item => (
-                <TouchableOpacity
-                  key={item.name}
-                  style={styles.menuRow}
-                  onPress={() => {
-                    handleChange('city', item.name);
-                    handleChange('cityId', item.id);
+            {citiesLoading ? (
+              <View
+                style={{
+                  paddingVertical: 30,
+                  alignItems:
+                    'center',
+                }}>
+                <ActivityIndicator
+                  size="small"
+                  color={
+                    colors.primary
+                  }
+                />
+              </View>
+            ) : cities.length ===
+              0 ? (
+              <Text
+                style={{
+                  paddingVertical: 25,
+                  textAlign:
+                    'center',
+                  color:
+                    colors.textSecondary,
+                }}>
+                No cities found
+              </Text>
+            ) : (
+              <ScrollView
+                showsVerticalScrollIndicator={
+                  false
+                }>
+                {cities.map(item => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={
+                      styles.menuRow
+                    }
+                    onPress={() => {
+                      handleChange(
+                        'city',
+                        item.name,
+                      );
 
-                    setShowCityModal(false);
-                  }}
-                >
-                  <Text style={styles.menuTitle}>{item.name}</Text>
+                      handleChange(
+                        'cityId',
+                        item.id,
+                      );
 
-                  {form.city === item.name && (
-                    <Feather name="check" size={20} color={colors.primary} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                      setShowCityModal(
+                        false,
+                      );
+                    }}>
+                    <Text
+                      style={
+                        styles.menuTitle
+                      }>
+                      {item.name}
+                    </Text>
+
+                    {form.cityId ===
+                      item.id && (
+                        <Feather
+                          name="check"
+                          size={20}
+                          color={
+                            colors.primary
+                          }
+                        />
+                      )}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
-      {/* manage profiles modal */}
+      {/* MANAGE PROFILES */}
       <ManageProfilesModal
         visible={profileModal}
         profiles={profiles}
         activeProfile={activeProfile}
-        onClose={() => setProfileModal(false)}
+        onClose={() =>
+          setProfileModal(false)
+        }
         onSelect={profile => {
-          console.log('PROFILE CHANGED:', profile);
+          console.log(
+            'PROFILE CHANGED:',
+            profile,
+          );
         }}
         onAddProfile={() => {
           setProfileModal(false);
@@ -1093,7 +1843,7 @@ const handleVerifyMobileChange = async () => {
         }}
       />
 
-      {/* chnage mobile number modal */}
+      {/* CHANGE MOBILE NUMBER MODAL */}
       <Modal
         visible={showChangeMobileModal}
         transparent
@@ -1101,47 +1851,85 @@ const handleVerifyMobileChange = async () => {
         statusBarTranslucent
         onRequestClose={() => {
           if (!verifyingMobileOtp) {
-            setShowChangeMobileModal(false);
+            setShowChangeMobileModal(
+              false,
+            );
+
+            setMobileChangeStep(
+              'idle',
+            );
           }
-        }}
-      >
-        <View style={styles.successOverlay}>
+        }}>
+        <View
+          style={
+            styles.successOverlay
+          }>
           <KeyboardAwareScrollView
-            contentContainerStyle={styles.changeMobileModalScroll}
-            keyboardShouldPersistTaps="handled"
-          >
-            <View style={styles.changeMobileModal}>
-              <View style={styles.changeMobileIcon}>
+            contentContainerStyle={
+              styles.changeMobileModalScroll
+            }
+            keyboardShouldPersistTaps="handled">
+            <View
+              style={
+                styles.changeMobileModal
+              }>
+              <View
+                style={
+                  styles.changeMobileIcon
+                }>
                 <Feather
                   name="smartphone"
                   size={28}
-                  color={colors.primary}
+                  color={
+                    colors.primary
+                  }
                 />
               </View>
 
-              <Text style={styles.changeMobileTitle}>
+              <Text
+                style={
+                  styles.changeMobileTitle
+                }>
                 Change Mobile Number
               </Text>
 
-              <Text style={styles.changeMobileSubtitle}>
-                A verification code has been sent to your current mobile number
-                {mobileMask ? ` ${mobileMask}` : ''}.
+              <Text
+                style={
+                  styles.changeMobileSubtitle
+                }>
+                A verification code has
+                been sent to your current
+                mobile number
+                {mobileMask
+                  ? ` ${mobileMask}`
+                  : ''}
+                .
               </Text>
 
-               <Input
+              {/* OTP */}
+              <Input
                 label="OTP"
                 placeholder="Enter 4-digit OTP"
                 keyboardType="number-pad"
-                maxLength={4}
+                maxLength={6}
                 value={mobileOtp}
                 onChangeText={text => {
                   setMobileOtp(
-                    text.replace(/\D/g, '').slice(0, 4),
+                    text
+                      .replace(
+                        /\D/g,
+                        '',
+                      )
+                      .slice(0, 4),
                   );
-                  setMobileChangeError('');
+
+                  setMobileChangeError(
+                    '',
+                  );
                 }}
               />
 
+              {/* NEW MOBILE */}
               <Input
                 label="NEW MOBILE NUMBER"
                 placeholder="Enter new mobile number"
@@ -1150,12 +1938,21 @@ const handleVerifyMobileChange = async () => {
                 value={newMobile}
                 onChangeText={text => {
                   setNewMobile(
-                    text.replace(/\D/g, '').slice(0, 10),
+                    text
+                      .replace(
+                        /\D/g,
+                        '',
+                      )
+                      .slice(0, 10),
                   );
-                  setMobileChangeError('');
+
+                  setMobileChangeError(
+                    '',
+                  );
                 }}
               />
 
+              {/* CONFIRM MOBILE */}
               <Input
                 label="CONFIRM NEW MOBILE NUMBER"
                 placeholder="Re-enter new mobile number"
@@ -1164,52 +1961,88 @@ const handleVerifyMobileChange = async () => {
                 value={confirmNewMobile}
                 onChangeText={text => {
                   setConfirmNewMobile(
-                    text.replace(/\D/g, '').slice(0, 10),
+                    text
+                      .replace(
+                        /\D/g,
+                        '',
+                      )
+                      .slice(0, 10),
                   );
-                  setMobileChangeError('');
+
+                  setMobileChangeError(
+                    '',
+                  );
                 }}
               />
 
-               {mobileChangeError ? (
-                <Text style={styles.mobileChangeError}>
+              {mobileChangeError ? (
+                <Text
+                  style={
+                    styles.mobileChangeError
+                  }>
                   {mobileChangeError}
                 </Text>
               ) : null}
 
+              {/* RESEND */}
               <TouchableOpacity
-                style={styles.resendMobileButton}
+                style={
+                  styles.resendMobileButton
+                }
                 disabled={
-                  mobileResendTimer > 0 ||
+                  mobileResendTimer >
+                  0 ||
                   resendingMobileOtp ||
                   verifyingMobileOtp
                 }
-                onPress={handleResendMobileOtp}
-              >
+                onPress={
+                  handleResendMobileOtp
+                }>
                 <Text
                   style={[
                     styles.resendMobileText,
-                    mobileResendTimer > 0 &&
+                    mobileResendTimer >
+                    0 &&
                     styles.resendMobileTextDisabled,
-                  ]}
-                >
+                  ]}>
                   {resendingMobileOtp
                     ? 'Sending...'
-                    : mobileResendTimer > 0
+                    : mobileResendTimer >
+                      0
                       ? `Resend code in ${mobileResendTimer}s`
                       : 'Resend code'}
                 </Text>
               </TouchableOpacity>
 
-              <View style={styles.changeMobileActions}>
+              {/* ACTIONS */}
+              <View
+                style={
+                  styles.changeMobileActions
+                }>
                 <TouchableOpacity
-                  style={styles.changeMobileCancelButton}
-                  disabled={verifyingMobileOtp}
+                  style={
+                    styles.changeMobileCancelButton
+                  }
+                  disabled={
+                    verifyingMobileOtp
+                  }
                   onPress={() => {
-                    setShowChangeMobileModal(false);
-                    setMobileChangeError('');
-                  }}
-                >
-                  <Text style={styles.changeMobileCancelText}>
+                    setShowChangeMobileModal(
+                      false,
+                    );
+
+                    setMobileChangeStep(
+                      'idle',
+                    );
+
+                    setMobileChangeError(
+                      '',
+                    );
+                  }}>
+                  <Text
+                    style={
+                      styles.changeMobileCancelText
+                    }>
                     Cancel
                   </Text>
                 </TouchableOpacity>
@@ -1220,16 +2053,22 @@ const handleVerifyMobileChange = async () => {
                     verifyingMobileOtp &&
                     styles.changeMobileVerifyButtonDisabled,
                   ]}
-                  disabled={verifyingMobileOtp}
-                  onPress={handleVerifyMobileChange}
-                >
+                  disabled={
+                    verifyingMobileOtp
+                  }
+                  onPress={
+                    handleVerifyMobileChange
+                  }>
                   {verifyingMobileOtp ? (
                     <ActivityIndicator
                       size="small"
                       color="#fff"
                     />
                   ) : (
-                    <Text style={styles.changeMobileVerifyText}>
+                    <Text
+                      style={
+                        styles.changeMobileVerifyText
+                      }>
                       Verify & Change
                     </Text>
                   )}
@@ -1244,7 +2083,10 @@ const handleVerifyMobileChange = async () => {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F4F7FD' },
+  container: {
+    flex: 1,
+    backgroundColor: '#F4F7FD',
+  },
 
   headerContent: {
     flexDirection: 'row',
@@ -1252,7 +2094,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
 
-  header: { paddingTop: 60, paddingHorizontal: 16, paddingBottom: 20 },
+  header: {
+    paddingTop: 60,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
+  },
 
   backBtn: {
     padding: 6,
@@ -1260,7 +2106,16 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  row: { flexDirection: 'row', alignItems: 'center' },
+  settingBtn: {
+    padding: 6,
+    borderRadius: 10,
+    marginBottom: 16,
+  },
+
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 
   overlay: {
     position: 'absolute',
@@ -1268,7 +2123,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor:
+      'rgba(0,0,0,0.55)',
     justifyContent: 'flex-end',
   },
 
@@ -1282,27 +2138,56 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
 
-  avatarText: { color: '#fff', fontSize: 18, fontFamily: fonts.semiBold, },
+  avatarText: {
+    color: '#fff',
+    fontSize: 18,
+    fontFamily: fonts.semiBold,
+  },
 
-  name: { color: '#fff', fontSize: 24, fontFamily: fonts.semiBold, },
+  name: {
+    color: '#fff',
+    fontSize: 24,
+    fontFamily: fonts.semiBold,
+  },
 
-  phone: { color: '#fff', fontSize: 14 },
+  phone: {
+    color: '#fff',
+    fontSize: 14,
+  },
 
-  statsRow: { flexDirection: 'row', marginTop: 16 },
+  statsRow: {
+    flexDirection: 'row',
+    marginTop: 16,
+  },
 
   statBox: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor:
+      'rgba(255,255,255,0.1)',
     marginHorizontal: 4,
     padding: 12,
     borderRadius: 12,
     alignItems: 'center',
   },
 
-  statValue: { color: '#fff', fontSize: 18, fontFamily: fonts.semiBold, },
-  statLabel: { color: '#fff', fontSize: Platform.OS === 'ios' ? 8 : 11, fontFamily: fonts.semiBold, },
+  statValue: {
+    color: '#fff',
+    fontSize: 18,
+    fontFamily: fonts.semiBold,
+  },
 
-  content: { padding: 16 },
+  statLabel: {
+    color: '#fff',
+    fontSize:
+      Platform.OS === 'ios'
+        ? 8
+        : 11,
+    fontFamily: fonts.semiBold,
+  },
+
+  content: {
+    padding: 16,
+  },
 
   card: {
     backgroundColor: '#fff',
@@ -1333,7 +2218,8 @@ const styles = StyleSheet.create({
 
   menuRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent:
+      'space-between',
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderColor: '#eee',
@@ -1343,6 +2229,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: colors.textPrimary,
+    flex: 1,
   },
 
   buttonWrap: {
@@ -1351,7 +2238,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 16,
-    // paddingBottom: 90,
     backgroundColor: '#F4F7FD',
     borderTopWidth: 1,
     borderTopColor: '#E6EBF5',
@@ -1429,7 +2315,8 @@ const styles = StyleSheet.create({
 
   successOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor:
+      'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 25,
@@ -1471,7 +2358,8 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 48,
     borderRadius: 12,
-    backgroundColor: colors.darkPrimary,
+    backgroundColor:
+      colors.darkPrimary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1495,6 +2383,7 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontFamily: fonts.semiBold,
   },
+
   changeMobileButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1568,7 +2457,6 @@ const styles = StyleSheet.create({
   },
 
   resendMobileButton: {
-    // alignItems: 'center',
     paddingVertical: 10,
   },
 
@@ -1608,7 +2496,8 @@ const styles = StyleSheet.create({
     flex: 1.4,
     height: 48,
     borderRadius: 12,
-    backgroundColor: colors.darkPrimary,
+    backgroundColor:
+      colors.darkPrimary,
     justifyContent: 'center',
     alignItems: 'center',
   },

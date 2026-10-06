@@ -24,8 +24,14 @@ export const API_ROUTES = {
 
   lookups: {
     states: '/patient/lookups/states',
+    districts: '/patient/lookups/districts',
     cities: '/patient/lookups/cities',
     specializations: '/patient/lookups/specializations',
+      qualificationSpecializations:
+    '/patient/lookups/qualification-specializations',
+
+  citiesSearch:
+    '/patient/lookups/cities/search',
   },
 
   patient: {

@@ -33,6 +33,7 @@ import {
 import { useSwitchProfileMutation } from '../../hooks/queries/useProfileMutations';
 import { useDispatch } from 'react-redux';
 import { setFamilyMemberFlow } from '../../store/authSlice';
+import AdvancedDoctorSearchModal from '../../components/common/AdvancedDoctorSearchModal';
 
 export default function HomeScreen({ navigation }) {
   const { t } = useTranslation();
@@ -43,6 +44,8 @@ export default function HomeScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
   const [ActiveCard, setActiveCard] = useState(false)
+  const [advancedSearchVisible, setAdvancedSearchVisible] =
+    useState(false);
 
   const [profileModal, setProfileModal] = useState(false);
 
@@ -132,6 +135,7 @@ export default function HomeScreen({ navigation }) {
     isFetching: doctorSearchFetching,
   } = useDoctorsSearchQuery({
     q: searchQuery || undefined,
+    source: 'home',
     page: 1,
     limit: 5,
   });
@@ -143,6 +147,8 @@ export default function HomeScreen({ navigation }) {
   const recentlyConsulted = dashboard?.data?.recently_consulted || [];
   const appointment = dashboard?.upcoming_appointment;
   const seasonalHealth = dashboard?.data?.seasonal_health || [];
+  const specialtyGroups =
+    dashboard?.data?.specialty_groups || [];
 
   useEffect(() => {
     Animated.loop(
@@ -409,6 +415,24 @@ export default function HomeScreen({ navigation }) {
               </TouchableOpacity>
             </View>
 
+            <TouchableOpacity
+              style={styles.advancedSearchButton}
+              activeOpacity={0.8}
+              onPress={() => {
+                setShowSearchSuggestions(false);
+                setAdvancedSearchVisible(true);
+              }}>
+              <Feather
+                name="sliders"
+                size={15}
+                color={colors.white}
+              />
+
+              <Text style={styles.advancedSearchButtonText}>
+                Advanced Search
+              </Text>
+            </TouchableOpacity>
+
             {/* AUTO SUGGESTIONS */}
             {showSearchSuggestions && search.trim().length >= 2 && (
               <View style={styles.searchSuggestions}>
@@ -604,7 +628,7 @@ export default function HomeScreen({ navigation }) {
                 </View>
 
                 {/* ACTION */}
-                <View style={{ position: 'relative' }}>
+                {/* <View style={{ position: 'relative' }}>
                   <Animated.View
                     style={[
                       styles.ping,
@@ -642,7 +666,7 @@ export default function HomeScreen({ navigation }) {
                       <Text style={styles.joinText}>Join</Text>
                     </TouchableOpacity>
                   )}
-                </View>
+                </View> */}
               </View>
             </TouchableOpacity>
           )}
@@ -657,7 +681,7 @@ export default function HomeScreen({ navigation }) {
           onRefresh={handleRefresh}
         >
           {/* Recently Consulted */}
-          <View>
+          {recentlyConsulted.length > 0 && <View>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>{t('recentlyConsulted')}</Text>
             </View>
@@ -816,30 +840,72 @@ export default function HomeScreen({ navigation }) {
                 </Text>
               </View>
             )}
-          </View>
+          </View>}
 
-          {/* <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Browse by Speciality</Text>
-          </View>
-          <View style={styles.grid}>
-            {specialties.map((item, i) => (
-              <TouchableOpacity
-                key={i}
-                onPress={() => {
-                  setActiveCard(i);
-                  navigation.navigate('BrowseByDoctors', {
-                    search: item.name,
-                  });
-                  setActiveCard(false);
-                }}
-                style={[styles.card, i === ActiveCard && styles.activeCard]}>
-                <View style={styles.iconWrap}>
-                  <Image source={item.icon} style={styles.iconWrap} />
-                </View>
-                <Text style={styles.cardText}>{item.name}</Text>
-              </TouchableOpacity>
-            ))}
-          </View> */}
+          {/* Browse by Speciality */}
+          {specialtyGroups.length > 0 && (
+            <>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>
+                  Browse by Speciality
+                </Text>
+
+                {specialtyGroups.length > 9 && (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => navigation.navigate('SpecialtiesScreen', { specialtyGroups })}
+                  >
+                    <Text style={styles.viewAllText}>
+                      View all
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View style={styles.grid}>
+                {specialtyGroups.slice(0, 9).map((item, index) => (
+                  <TouchableOpacity
+                    key={item?.id ?? index}
+                    activeOpacity={0.85}
+                    style={styles.card}
+                    onPress={() => {
+                      if (!item?.id) {
+                        return;
+                      }
+
+                      navigation.navigate('BrowseByDoctors', {
+                        specialty_group_id: item?.id,
+                        search: item.title,
+                      });
+                    }}
+                  >
+                    <View style={styles.iconWrap}>
+                      {item?.image_url ? (
+                        <Image
+                          source={{ uri: item.image_url }}
+                          style={styles.iconWrap}
+                          resizeMode="contain"
+                        />
+                      ) : (
+                        <Feather
+                          name="heart"
+                          size={22}
+                          color={colors.primary}
+                        />
+                      )}
+                    </View>
+
+                    <Text
+                      style={styles.cardText}
+                      numberOfLines={2}
+                    >
+                      {item?.title || 'Speciality'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </>
+          )}
 
           {/* Health Tip */}
           {/* <View style={styles.sectionHeader}>
@@ -1049,6 +1115,31 @@ export default function HomeScreen({ navigation }) {
             );
           }}
         />
+
+        <AdvancedDoctorSearchModal
+          visible={advancedSearchVisible}
+          onClose={() => {
+            setAdvancedSearchVisible(false);
+          }}
+          onSearch={params => {
+            setAdvancedSearchVisible(false);
+
+            navigation.navigate(
+              'BrowseByDoctors',
+              {
+                search: params?.q || '',
+
+                qualification_specialization_id:
+                  params?.qualification_specialization_id,
+
+                city_id:
+                  params?.city_id,
+
+                source: 'advanced',
+              },
+            );
+          }}
+        />
       </View>
     </>
   );
@@ -1068,6 +1159,9 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 80 : 60,
     paddingHorizontal: 16,
     paddingBottom: 20,
+
+    zIndex: 1000,
+    elevation: 1000,
   },
 
   topRow: {
@@ -1099,14 +1193,18 @@ const styles = StyleSheet.create({
 
   searchBox: {
     marginTop: 16,
+    height: 52,
+
     backgroundColor: '#fff',
     borderRadius: 16,
+
     paddingHorizontal: 14,
-    paddingVertical: Platform.OS === 'ios' ? 16 : 5,
+    paddingVertical: 0,
+
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    fontWeight: '700',
+
     width: '100%',
     overflow: 'hidden',
     position: 'relative',
@@ -1137,6 +1235,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 20,
     padding: 14,
+
+    // Keep below search suggestions
+    position: 'relative',
+    zIndex: 1,
+    // elevation: 1,
   },
 
   upcomingCardHeader: {
@@ -1176,7 +1279,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#00be1dff',
   },
-  
+
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1294,6 +1397,12 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
   },
 
+  viewAllText: {
+    fontSize: 13,
+    fontFamily: fonts.semiBold,
+    color: colors.primary,
+  },
+
   link: {
     color: colors.darkPrimary,
     fontSize: 14,
@@ -1305,10 +1414,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     marginTop: 10,
     justifyContent: 'space-between',
+    gap: 2
   },
 
   card: {
-    width: '23%',
+    width: '30%',
     backgroundColor: '#fff',
     borderRadius: 16,
     paddingVertical: 12,
@@ -1316,6 +1426,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 2,
     borderColor: '#ffffff',
+    paddingHorizontal: 5,
   },
 
   activeCard: {
@@ -1332,10 +1443,12 @@ const styles = StyleSheet.create({
   },
 
   cardText: {
-    marginTop: 6,
-    fontSize: 12,
-    color: colors.textPrimary,
-    fontFamily: fonts.semiBold,
+    fontSize: 11.5,
+    lineHeight: 15,
+    fontFamily: fonts.bold,
+    color: '#344054',
+    textAlign: 'center',
+    marginTop: 4
   },
 
   doctorCard: {
@@ -1665,8 +1778,8 @@ const styles = StyleSheet.create({
 
   didTitle: {
     marginTop: 16,
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#060D1F',
   },
 
@@ -1707,8 +1820,8 @@ const styles = StyleSheet.create({
 
   habitTitle: {
     marginTop: 12,
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     color: '#101828',
   },
 
@@ -1793,8 +1906,8 @@ const styles = StyleSheet.create({
   },
 
   searchWrapper: {
-    position: 'relative',
-    zIndex: 100,
+    width: '100%',
+    zIndex: 10000,
   },
 
   searchClearButton: {
@@ -1806,22 +1919,24 @@ const styles = StyleSheet.create({
   },
 
   searchSuggestions: {
-    position: 'absolute',
-    top: 72,
-    left: 0,
-    right: 0,
+    position: 'relative',
+    marginTop: 8,
+    width: '100%',
     backgroundColor: '#fff',
     borderRadius: 16,
     paddingVertical: 6,
     overflow: 'hidden',
-    zIndex: 999,
-    elevation: 10,
+
+    // Keep suggestions above other content visually
+    zIndex: 100000,
+    elevation: 50,
+
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 5,
     },
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.15,
     shadowRadius: 12,
   },
 
@@ -1905,5 +2020,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#7A879E',
     fontFamily: fonts.medium,
+  },
+  advancedSearchButton: {
+    alignSelf: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 9,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+
+  advancedSearchButtonText: {
+    marginLeft: 6,
+    fontFamily: fonts.semiBold,
+    fontSize: 12,
+    color: '#fff',
   },
 });

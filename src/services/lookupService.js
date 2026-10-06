@@ -7,6 +7,11 @@ const lookupService = {
       params,
     }),
 
+    getDistricts: params =>
+  apiClient.get(API_ROUTES.lookups.districts, {
+    params,
+  }),
+
   getCities: params =>
     apiClient.get(API_ROUTES.lookups.cities, {
       params,
@@ -16,6 +21,22 @@ const lookupService = {
     apiClient.get(API_ROUTES.lookups.specializations, {
       params,
     }),
+
+      getQualificationSpecializations: params =>
+    apiClient.get(
+      API_ROUTES.lookups.qualificationSpecializations,
+      {
+        params,
+      },
+    ),
+
+  searchCities: params =>
+    apiClient.get(
+      API_ROUTES.lookups.citiesSearch,
+      {
+        params,
+      },
+    ),
 };
 
 export default lookupService;
