@@ -1111,6 +1111,7 @@ export default function HomeScreen({ navigation }) {
             dispatch(
               setFamilyMemberFlow({
                 phone: phone || null,
+    source: 'home',      
               }),
             );
           }}

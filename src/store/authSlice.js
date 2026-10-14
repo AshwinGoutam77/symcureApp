@@ -20,6 +20,7 @@ const initialState = {
 
   familyMemberFlow: false,
   familyMemberPhone: null,
+  familyMemberSource: null, // 'home' | 'profile' | 'auth'
 
   isAuthenticated: false,
 };
@@ -92,6 +93,7 @@ const authSlice = createSlice({
 
       state.familyMemberFlow = false;
       state.familyMemberPhone = null;
+      state.familyMemberSource = null;
     },
 
     // UPDATE USER
@@ -188,35 +190,51 @@ const authSlice = createSlice({
     },
 
     // PROFILE COMPLETED
-    setProfileComplete: state => {
-      state.onboardingRequired = false;
+setProfileComplete: state => {
+  state.onboardingRequired = false;
 
-      if (state.onboarding) {
-        state.onboarding.basic_details_required =
-          false;
-      }
+  if (state.onboarding) {
+    state.onboarding.basic_details_required = false;
+  }
 
-      state.profileStatus = 'complete';
-    },
+  state.profileStatus = 'complete';
+
+  state.familyMemberFlow = false;
+  state.familyMemberPhone = null;
+  state.familyMemberSource = null;
+},
 
     // Family member
-    setFamilyMemberFlow: (state, action) => {
-      state.familyMemberFlow = true;
-      state.familyMemberPhone = action.payload?.phone ?? null;
+setFamilyMemberFlow: (state, action) => {
+  state.familyMemberFlow = true;
+  state.familyMemberPhone = action.payload?.phone ?? null;
+  state.familyMemberSource = action.payload?.source ?? 'auth';
 
-      state.onboardingRequired = true;
+  state.onboardingRequired = true;
 
-      if (!state.onboarding) {
-        state.onboarding = {};
-      }
+  if (!state.onboarding) {
+    state.onboarding = {};
+  }
 
-      state.onboarding.basic_details_required = true;
-    },
+  state.onboarding.basic_details_required = true;
+},
 
-    clearFamilyMemberFlow: state => {
-      state.familyMemberFlow = false;
-      state.familyMemberPhone = null;
-    },
+clearFamilyMemberFlow: state => {
+  state.familyMemberFlow = false;
+  state.familyMemberPhone = null;
+  state.familyMemberSource = null;
+},
+
+cancelFamilyMemberFlow: state => {
+  state.familyMemberFlow = false;
+  state.familyMemberPhone = null;
+  state.familyMemberSource = null;
+  state.onboardingRequired = false;
+
+  if (state.onboarding) {
+    state.onboarding.basic_details_required = false;
+  }
+},
 
     // =========================================
     // LOGOUT
@@ -232,6 +250,7 @@ export const {
   setProfileComplete,
   setFamilyMemberFlow,
   clearFamilyMemberFlow,
+  cancelFamilyMemberFlow,
   clearSession,
 } = authSlice.actions;
 

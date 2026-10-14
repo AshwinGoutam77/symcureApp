@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "461268060218",
+    "project_id": "symcure-e0bd7",
+    "storage_bucket": "symcure-e0bd7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:461268060218:android:a60b33202ad16ec2c20d03",
+        "android_client_info": {
+          "package_name": "com.symcure"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBVEV4ax2jKSDvNJLmmp_dSKs0k577zyPk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

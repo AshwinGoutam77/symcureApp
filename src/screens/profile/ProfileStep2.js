@@ -29,9 +29,11 @@ import {
 } from '../../hooks/queries/useAuthMutations';
 import { useDispatch } from 'react-redux';
 import { clearFamilyMemberFlow, setActiveProfile, setAuthUser, setProfileComplete } from '../../store/authSlice';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function ProfileStep2({ navigation, route }) {
   const dispatch = useDispatch();
+  const queryClient = useQueryClient();
   const {
     form: step1Form = {},
     existingAccount = false,
@@ -725,15 +727,18 @@ setShowState(false);
               containerStyle={{
                 width: '100%',
               }}
-              onPress={() => {
-                setShowSuccess(false);
+             onPress={() => {
+  setShowSuccess(false);
 
-                if (existingAccount) {
-                  dispatch(clearFamilyMemberFlow());
-                }
+  if (existingAccount) {
+    dispatch(clearFamilyMemberFlow());
+  }
 
-                dispatch(setProfileComplete());
-              }}
+  queryClient.invalidateQueries({queryKey: ['patient-profiles']});
+  queryClient.invalidateQueries({queryKey: ['active-profile']});
+
+  dispatch(setProfileComplete()); // navigator switches to MainTabs (Home)
+}}
             />
           </View>
         </View>

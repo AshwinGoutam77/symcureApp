@@ -12,7 +12,7 @@ import {
 
 import Feather from 'react-native-vector-icons/Feather';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+import { unregisterDeviceToken } from '../../services/notificationService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 
@@ -171,7 +171,7 @@ export default function DeleteAccountScreen({ navigation }) {
 
             try {
                 console.log('STARTING DELETE ACCOUNT LOCAL LOGOUT');
-
+                await unregisterDeviceToken();
                 await AsyncStorage.removeItem('access_token');
                 await AsyncStorage.removeItem('refresh_token');
                 await AsyncStorage.removeItem('patient_account_id');

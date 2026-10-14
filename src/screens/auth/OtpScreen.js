@@ -704,6 +704,7 @@ export default function OtpScreen({
       dispatch(
         setFamilyMemberFlow({
           phone,
+           source: 'auth',
         }),
       );
     };

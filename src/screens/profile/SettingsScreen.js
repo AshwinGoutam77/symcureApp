@@ -17,7 +17,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Feather from 'react-native-vector-icons/Feather';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-
+import { unregisterDeviceToken } from '../../services/notificationService';
 import { colors, fonts } from '../../theme';
 
 import ManageProfilesModal from '../../components/common/ManageProfilesModal';
@@ -103,23 +103,31 @@ export default function SettingsScreen({ navigation }) {
     }
   };
 
-  const handleLogout = () => {
-    logout(undefined, {
-      onSuccess: response => {
-        console.log('LOGOUT API SUCCESS:', response);
-      },
+const handleLogout = async () => {
+  // 1. Remove push token while the access token is still valid
+  try {
+    await unregisterDeviceToken();
+  } catch (e) {
+    console.log('UNREGISTER TOKEN ERROR:', e);
+  }
 
-      onError: error => {
-        console.log('LOGOUT API ERROR:', error);
-      },
+  // 2. Then call logout API as before
+  logout(undefined, {
+    onSuccess: response => {
+      console.log('LOGOUT API SUCCESS:', response);
+    },
 
-      onSettled: async () => {
-        console.log('LOGOUT API SETTLED');
+    onError: error => {
+      console.log('LOGOUT API ERROR:', error);
+    },
 
-        await finishLogout();
-      },
-    });
-  };
+    onSettled: async () => {
+      console.log('LOGOUT API SETTLED');
+
+      await finishLogout();
+    },
+  });
+};
 
   const handleSetPin = async () => {
     setPinError('');
@@ -410,7 +418,7 @@ export default function SettingsScreen({ navigation }) {
         </View>
 
         {/* ABOUT */}
-        <View style={styles.card}>
+        {/* <View style={styles.card}>
           <Text style={styles.heading}>About</Text>
 
           <MenuRow
@@ -419,7 +427,7 @@ export default function SettingsScreen({ navigation }) {
             value="1.0.1"
             showArrow={false}
           />
-        </View>
+        </View> */}
 
         {/* LOGOUT */}
         <TouchableOpacity
@@ -601,6 +609,7 @@ export default function SettingsScreen({ navigation }) {
           dispatch(
             setFamilyMemberFlow({
               phone: phone || null,
+  source: 'profile', 
             }),
           );
         }}

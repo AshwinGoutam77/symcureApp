@@ -48,7 +48,6 @@ const AdvancedDoctorSearchModal = ({
 
     initialLocationType = 'city',
 }) => {
-
     const useDebounce = (value, delay = 300) => {
         const [debouncedValue, setDebouncedValue] =
             useState(value);
@@ -92,7 +91,9 @@ const AdvancedDoctorSearchModal = ({
     const [
         selectedSpecialization,
         setSelectedSpecialization,
-    ] = useState(initialSpecialization || null);
+    ] = useState(
+        initialSpecialization || null,
+    );
 
     const [selectedCity, setSelectedCity] =
         useState(initialCity || null);
@@ -132,7 +133,9 @@ const AdvancedDoctorSearchModal = ({
     const {
         data: cityResponse,
         isFetching: cityLoading,
-    } = useCitiesSearchQuery(debouncedCitySearch);
+    } = useCitiesSearchQuery(
+        debouncedCitySearch,
+    );
 
     /*
      * ==========================================
@@ -178,19 +181,6 @@ const AdvancedDoctorSearchModal = ({
     /*
      * ==========================================
      * WHEN MODAL OPENS
-     *
-     * IMPORTANT:
-     * initialSearch is the value user already
-     * searched on BrowseByDoctors.
-     *
-     * Example:
-     *
-     * search = "fever"
-     *
-     * Modal opens with:
-     *
-     * What are you looking for?
-     * [ 🔍 fever                         x ]
      * ==========================================
      */
 
@@ -240,27 +230,6 @@ const AdvancedDoctorSearchModal = ({
 
     /*
      * ==========================================
-     * CLEAR ALL
-     * ==========================================
-     */
-
-    const clearAll = () => {
-        setSearch('');
-
-        setSpecializationText('');
-        setCityText('');
-
-        setSelectedSpecialization(null);
-        setSelectedCity(null);
-
-        setLocationType('city');
-
-        setShowSpecializationList(false);
-        setShowCityList(false);
-    };
-
-    /*
-     * ==========================================
      * SEARCH TEXT
      * ==========================================
      */
@@ -277,6 +246,40 @@ const AdvancedDoctorSearchModal = ({
 
     const handlePopularSearch = value => {
         setSearch(value);
+    };
+
+    /*
+     * ==========================================
+     * CLEAR SEARCH
+     * ==========================================
+     */
+
+    const clearSearch = () => {
+        setSearch('');
+    };
+
+    /*
+     * ==========================================
+     * CLEAR SPECIALIZATION
+     * ==========================================
+     */
+
+    const clearSpecialization = () => {
+        setSpecializationText('');
+        setSelectedSpecialization(null);
+        setShowSpecializationList(false);
+    };
+
+    /*
+     * ==========================================
+     * CLEAR CITY
+     * ==========================================
+     */
+
+    const clearCity = () => {
+        setCityText('');
+        setSelectedCity(null);
+        setShowCityList(false);
     };
 
     /*
@@ -333,9 +336,6 @@ const AdvancedDoctorSearchModal = ({
     /*
      * ==========================================
      * STATE
-     *
-     * Current API contract doesn't provide
-     * state_id for advanced search.
      * ==========================================
      */
 
@@ -399,7 +399,9 @@ const AdvancedDoctorSearchModal = ({
                     )
                 }>
                 <View
-                    style={styles.dropdownIcon}>
+                    style={
+                        styles.dropdownIcon
+                    }>
                     <Feather
                         name="activity"
                         size={15}
@@ -454,7 +456,9 @@ const AdvancedDoctorSearchModal = ({
                     handleSelectCity(item)
                 }>
                 <View
-                    style={styles.dropdownIcon}>
+                    style={
+                        styles.dropdownIcon
+                    }>
                     <Feather
                         name="map-pin"
                         size={15}
@@ -497,8 +501,8 @@ const AdvancedDoctorSearchModal = ({
                         ? 'padding'
                         : undefined
                 }>
-
                 <View style={styles.overlay}>
+                    {/* BACKDROP */}
 
                     <Pressable
                         style={styles.backdrop}
@@ -509,25 +513,39 @@ const AdvancedDoctorSearchModal = ({
                         {/* DRAG HANDLE */}
 
                         <View
-                            style={styles.dragHandle}
+                            style={
+                                styles.dragHandle
+                            }
                         />
 
                         {/* ====================================
-              HEADER
-          ==================================== */}
+                            HEADER
+                        ==================================== */}
 
-                        <View style={styles.header}>
-                            <Text style={styles.title}>
+                        <View
+                            style={
+                                styles.header
+                            }>
+                            <Text
+                                style={
+                                    styles.title
+                                }>
                                 Search Doctors
                             </Text>
 
+                            {/* CLOSE */}
+
                             <TouchableOpacity
                                 activeOpacity={0.7}
-                                onPress={clearAll}>
-                                <Text
-                                    style={styles.clearAll}>
-                                    Clear all
-                                </Text>
+                                onPress={onClose}
+                                style={
+                                    styles.closeButton
+                                }>
+                                <Feather
+                                    name={Platform.OS === 'ios' ? 'x-circle' : 'x'}
+                                    size={20}
+                                    color="#344054"
+                                />
                             </TouchableOpacity>
                         </View>
 
@@ -540,13 +558,19 @@ const AdvancedDoctorSearchModal = ({
                                 styles.scrollContent
                             }>
                             {/* ==================================
-                WHAT ARE YOU LOOKING FOR
-            ================================== */}
+                                WHAT ARE YOU LOOKING FOR
+                            ================================== */}
 
-                            <View style={styles.section}>
+                            <View
+                                style={
+                                    styles.section
+                                }>
                                 <Text
-                                    style={styles.label}>
-                                    What are you looking for?
+                                    style={
+                                        styles.label
+                                    }>
+                                    What are you
+                                    looking for?
                                 </Text>
 
                                 <View
@@ -560,13 +584,17 @@ const AdvancedDoctorSearchModal = ({
                                     />
 
                                     <TextInput
-                                        value={search}
+                                        value={
+                                            search
+                                        }
                                         onChangeText={
                                             handleSearchChange
                                         }
                                         placeholder="Doctor name, specialty, symptom (e.g. fever)"
                                         placeholderTextColor="#9AA4B5"
-                                        style={styles.input}
+                                        style={
+                                            styles.input
+                                        }
                                         returnKeyType="search"
                                     />
 
@@ -576,8 +604,8 @@ const AdvancedDoctorSearchModal = ({
                                                 activeOpacity={
                                                     0.7
                                                 }
-                                                onPress={() =>
-                                                    setSearch('')
+                                                onPress={
+                                                    clearSearch
                                                 }
                                                 style={
                                                     styles.clearInput
@@ -593,27 +621,34 @@ const AdvancedDoctorSearchModal = ({
                             </View>
 
                             {/* ==================================
-                SPECIALTY
-            ================================== */}
+                                SPECIALTY
+                            ================================== */}
 
                             <View
                                 style={[
                                     styles.section,
-                                    { zIndex: 30 },
+                                    {
+                                        zIndex: 30,
+                                    },
                                 ]}>
                                 <Text
-                                    style={styles.label}>
+                                    style={
+                                        styles.label
+                                    }>
                                     Specialty
                                 </Text>
 
                                 <TouchableOpacity
-                                    activeOpacity={0.8}
+                                    activeOpacity={
+                                        0.8
+                                    }
                                     style={
                                         styles.selectBox
                                     }
                                     onPress={() => {
                                         setShowSpecializationList(
-                                            value => !value,
+                                            value =>
+                                                !value,
                                         );
 
                                         setShowCityList(
@@ -636,7 +671,9 @@ const AdvancedDoctorSearchModal = ({
                                         </View>
 
                                         <Text
-                                            numberOfLines={1}
+                                            numberOfLines={
+                                                1
+                                            }
                                             style={[
                                                 styles.selectText,
                                                 !specializationText &&
@@ -647,7 +684,21 @@ const AdvancedDoctorSearchModal = ({
                                         </Text>
                                     </View>
 
-                                    {specializationLoading ? (
+                                    {specializationText ? (
+                                        <TouchableOpacity
+                                            activeOpacity={
+                                                0.7
+                                            }
+                                            onPress={
+                                                clearSpecialization
+                                            }>
+                                            <Feather
+                                                name="x-circle"
+                                                size={18}
+                                                color="#98A2B3"
+                                            />
+                                        </TouchableOpacity>
+                                    ) : specializationLoading ? (
                                         <ActivityIndicator
                                             size="small"
                                             color="#1264F5"
@@ -702,6 +753,25 @@ const AdvancedDoctorSearchModal = ({
                                                 }
                                                 autoFocus
                                             />
+
+                                            {specializationText.length >
+                                                0 && (
+                                                    <TouchableOpacity
+                                                        activeOpacity={
+                                                            0.7
+                                                        }
+                                                        onPress={
+                                                            clearSpecialization
+                                                        }>
+                                                        <Feather
+                                                            name="x-circle"
+                                                            size={
+                                                                17
+                                                            }
+                                                            color="#98A2B3"
+                                                        />
+                                                    </TouchableOpacity>
+                                                )}
                                         </View>
 
                                         {specializations.length >
@@ -748,19 +818,22 @@ const AdvancedDoctorSearchModal = ({
                             </View>
 
                             {/* ==================================
-                LOCATION
-            ================================== */}
+                                LOCATION
+                            ================================== */}
 
                             <View
                                 style={[
                                     styles.section,
-                                    { zIndex: 20 },
+                                    {
+                                        zIndex: 20,
+                                    },
                                 ]}>
                                 <Text
-                                    style={styles.label}>
+                                    style={
+                                        styles.label
+                                    }>
                                     Location
                                 </Text>
-
 
                                 {/* CITY SEARCH */}
 
@@ -781,7 +854,9 @@ const AdvancedDoctorSearchModal = ({
                                                 />
 
                                                 <TextInput
-                                                    value={cityText}
+                                                    value={
+                                                        cityText
+                                                    }
                                                     onChangeText={value => {
                                                         setCityText(
                                                             value,
@@ -792,7 +867,8 @@ const AdvancedDoctorSearchModal = ({
                                                         );
 
                                                         setShowCityList(
-                                                            value.trim()
+                                                            value
+                                                                .trim()
                                                                 .length >=
                                                             2,
                                                         );
@@ -804,17 +880,36 @@ const AdvancedDoctorSearchModal = ({
                                                     }
                                                 />
 
-                                                {cityLoading && (
+                                                {cityLoading ? (
                                                     <ActivityIndicator
                                                         size="small"
                                                         color="#1264F5"
                                                     />
-                                                )}
+                                                ) : cityText.length >
+                                                    0 ? (
+                                                    <TouchableOpacity
+                                                        activeOpacity={
+                                                            0.7
+                                                        }
+                                                        onPress={
+                                                            clearCity
+                                                        }>
+                                                        <Feather
+                                                            name="x-circle"
+                                                            size={
+                                                                18
+                                                            }
+                                                            color="#98A2B3"
+                                                        />
+                                                    </TouchableOpacity>
+                                                ) : null}
                                             </View>
 
                                             {showCityList &&
-                                                cityText.trim()
-                                                    .length >= 2 && (
+                                                cityText
+                                                    .trim()
+                                                    .length >=
+                                                2 && (
                                                     <View
                                                         style={
                                                             styles.cityDropdown
@@ -822,7 +917,9 @@ const AdvancedDoctorSearchModal = ({
                                                         {cities.length >
                                                             0 ? (
                                                             <FlatList
-                                                                data={cities}
+                                                                data={
+                                                                    cities
+                                                                }
                                                                 keyExtractor={(
                                                                     item,
                                                                     index,
@@ -847,7 +944,8 @@ const AdvancedDoctorSearchModal = ({
                                                                     style={
                                                                         styles.emptyText
                                                                     }>
-                                                                    No city found
+                                                                    No city
+                                                                    found
                                                                 </Text>
                                                             </View>
                                                         )}
@@ -858,13 +956,17 @@ const AdvancedDoctorSearchModal = ({
                             </View>
 
                             {/* ==================================
-                POPULAR SEARCHES
-            ================================== */}
+                                POPULAR SEARCHES
+                            ================================== */}
 
                             <View
-                                style={styles.section}>
+                                style={
+                                    styles.section
+                                }>
                                 <Text
-                                    style={styles.label}>
+                                    style={
+                                        styles.label
+                                    }>
                                     Popular Searches
                                 </Text>
 
@@ -882,7 +984,9 @@ const AdvancedDoctorSearchModal = ({
 
                                             return (
                                                 <TouchableOpacity
-                                                    key={item}
+                                                    key={
+                                                        item
+                                                    }
                                                     activeOpacity={
                                                         0.75
                                                     }
@@ -902,7 +1006,9 @@ const AdvancedDoctorSearchModal = ({
                                                             active &&
                                                             styles.chipTextActive,
                                                         ]}>
-                                                        {item}
+                                                        {
+                                                            item
+                                                        }
                                                     </Text>
                                                 </TouchableOpacity>
                                             );
@@ -913,17 +1019,23 @@ const AdvancedDoctorSearchModal = ({
                         </ScrollView>
 
                         {/* ==================================
-              FOOTER
-          ================================== */}
+                            FOOTER
+                        ================================== */}
 
                         <View
-                            style={styles.footer}>
+                            style={
+                                styles.footer
+                            }>
                             <TouchableOpacity
-                                activeOpacity={0.85}
+                                activeOpacity={
+                                    0.85
+                                }
                                 style={
                                     styles.searchButton
                                 }
-                                onPress={handleSearch}>
+                                onPress={
+                                    handleSearch
+                                }>
                                 <Feather
                                     name="search"
                                     size={18}
@@ -949,8 +1061,10 @@ const styles = StyleSheet.create({
     root: {
         flex: 1,
         justifyContent: 'flex-end',
-        backgroundColor: 'rgba(15, 23, 42, 0.42)',
+        backgroundColor:
+            'rgba(15, 23, 42, 0.42)',
     },
+
     overlay: {
         flex: 1,
         justifyContent: 'flex-end',
@@ -959,11 +1073,11 @@ const styles = StyleSheet.create({
 
     backdrop: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(15, 23, 42, 0.42)',
+        backgroundColor:
+            'rgba(15, 23, 42, 0.42)',
     },
 
     sheet: {
-        // keep your existing sheet styles
         backgroundColor: '#FFFFFF',
 
         borderTopLeftRadius: 28,
@@ -1012,10 +1126,16 @@ const styles = StyleSheet.create({
         color: '#101828',
     },
 
-    clearAll: {
-        fontFamily: fonts.semiBold,
-        fontSize: 13,
-        color: '#1264F5',
+    closeButton: {
+        width: 36,
+        height: 36,
+
+        borderRadius: 18,
+
+        backgroundColor: '#F3F5F7',
+
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 
     scrollContent: {
@@ -1310,6 +1430,10 @@ const styles = StyleSheet.create({
         textAlign: 'center',
     },
 
+    citySearchWrapper: {
+        position: 'relative',
+    },
+
     cityDropdown: {
         marginTop: 6,
 
@@ -1368,10 +1492,7 @@ const styles = StyleSheet.create({
 
         paddingTop: 9,
 
-        paddingBottom:
-            Platform.OS === 'ios'
-                ? 50
-                : 50,
+        paddingBottom: 50,
 
         borderTopWidth: 1,
         borderTopColor: '#F0F2F5',

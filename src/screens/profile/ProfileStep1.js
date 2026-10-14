@@ -8,6 +8,7 @@ import {
   ScrollView,
   TouchableOpacity,
   Keyboard,
+  BackHandler,
 } from 'react-native';
 import { colors, fonts } from '../../theme';
 import Button from '../../components/common/Button';
@@ -17,7 +18,10 @@ import LinearGradient from 'react-native-linear-gradient';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import DatePicker from 'react-native-date-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {useSelector} from 'react-redux';
+import Feather from 'react-native-vector-icons/Feather';
+import {useSelector, useDispatch} from 'react-redux';
+import {cancelFamilyMemberFlow} from '../../store/authSlice';
+
 
 export default function ProfileStep1({navigation, route}) {
   const scrollRef = useRef(null);
@@ -26,10 +30,33 @@ const {
   patientAccountId = null,
 } = route?.params || {};
 
+const dispatch = useDispatch();
+
 const {
   familyMemberFlow,
   familyMemberPhone,
+  familyMemberSource,
 } = useSelector(state => state.auth);
+
+const showBackButton =
+  familyMemberFlow &&
+  (familyMemberSource === 'home' || familyMemberSource === 'profile');
+
+const handleBack = () => {
+  dispatch(cancelFamilyMemberFlow());
+};
+
+useEffect(() => {
+  if (!showBackButton) return undefined;
+
+  const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+    handleBack();
+    return true;
+  });
+
+  return () => sub.remove();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [showBackButton]);
 
 const existingAccount =
   routeExistingAccount || familyMemberFlow;
@@ -191,6 +218,15 @@ useEffect(() => {
     <View style={styles.container}>
       <LinearGradient colors={colors.gradient}>
         <View style={styles.header}>
+  {showBackButton && (
+    <TouchableOpacity
+      style={styles.backButton}
+      onPress={handleBack}
+      activeOpacity={0.8}>
+      <Feather name="arrow-left" size={20} color="#fff" />
+    </TouchableOpacity>
+  )}
+
           <Text style={styles.title}>Create Your Profile</Text>
           <Text style={styles.subtitle}>Step 1 of 2 — Basic Information</Text>
 
@@ -582,6 +618,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 20,
   },
+
+  backButton: {
+  width: 40,
+  height: 40,
+  borderRadius: 12,
+  backgroundColor: 'rgba(255,255,255,0.15)',
+  borderWidth: 1,
+  borderColor: 'rgba(255,255,255,0.25)',
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginBottom: 16,
+},
 
   title: {
     fontFamily: fonts.bold,

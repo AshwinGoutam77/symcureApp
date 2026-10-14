@@ -2,7 +2,7 @@
 /* eslint-disable react-native/no-inline-styles */
 
 import Feather from 'react-native-vector-icons/Feather';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 
 import {
   View,
@@ -163,6 +163,8 @@ export default function BrowseByDoctors({
     data,
     isLoading,
     isFetching,
+    dataUpdatedAt,
+    refetch,
   } = useDoctorsSearchQuery({
     /*
      * Specialty group searches should not
@@ -221,12 +223,14 @@ export default function BrowseByDoctors({
    * ==========================================
    */
 
-  const currentDoctors =
-    data?.data?.data || [];
+  const currentDoctors = useMemo(
+    () => data?.data?.data || [],
+    [data],
+  );
 
-    const appliedFilters= data?.data?.applied_filters || [];
-    console.log(data?.data?.applied_filters);
-    
+  const appliedFilters = data?.data?.applied_filters || [];
+  console.log(data?.data?.applied_filters);
+
   /*
    * ==========================================
    * PAGINATION META
@@ -318,12 +322,7 @@ export default function BrowseByDoctors({
     }
 
     setIsLoadingMore(false);
-  }, [
-    data,
-    page,
-    currentDoctors,
-    meta,
-  ]);
+  }, [data, dataUpdatedAt, page]);
 
   /*
    * ==========================================
@@ -331,7 +330,14 @@ export default function BrowseByDoctors({
    * ==========================================
    */
 
+  const isFirstRun = useRef(true);
+
   useEffect(() => {
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
+      return;
+    }
+
     const routeSearch =
       route?.params?.search ||
       '';
@@ -395,13 +401,8 @@ export default function BrowseByDoctors({
    */
 
   const handleSearch = () => {
-    const value =
-      search.trim();
+    const value = search.trim();
 
-    /*
-     * Don't search if absolutely
-     * nothing is selected.
-     */
     if (
       !value &&
       !specialtyGroupId &&
@@ -413,27 +414,21 @@ export default function BrowseByDoctors({
       return;
     }
 
-    /*
-     * User is now doing a normal
-     * text/name search.
-     *
-     * Remove specialty group.
-     */
+    // Same search as what's already showing → just refresh it
+    if (value === searchQuery && page === 1 && !(value && specialtyGroupId)) {
+      refetch();
+      return;
+    }
+
     if (value) {
       setSpecialtyGroupId(null);
     }
 
-    /*
-     * Reset list.
-     */
-    setAllDoctors([]);
+    // Don't clear allDoctors here — the merge effect replaces the
+    // list as soon as page-1 data for the new search arrives.
     setHasMore(true);
     setIsLoadingMore(false);
     setPage(1);
-
-    /*
-     * Update query.
-     */
     setSearchQuery(value);
   };
 
@@ -867,7 +862,7 @@ export default function BrowseByDoctors({
               style={
                 styles.headerTitle
               }
-              >
+            >
               {specialtyGroupId
                 ? specialistGroupName
                 : 'Search Doctors'}
@@ -1006,7 +1001,7 @@ export default function BrowseByDoctors({
                     );
                   }}>
                   <Feather
-                    name="x"
+                    name={Platform.OS === 'ios' ? 'x-circle' : 'x'}
                     size={13}
                     color="#1264F5"
                   />
@@ -1036,7 +1031,7 @@ export default function BrowseByDoctors({
                     );
                   }}>
                   <Feather
-                    name="x"
+                    name={Platform.OS === 'ios' ? 'x-circle' : 'x'}
                     size={13}
                     color="#1264F5"
                   />
@@ -1066,7 +1061,7 @@ export default function BrowseByDoctors({
                     );
                   }}>
                   <Feather
-                    name="x"
+                    name={Platform.OS === 'ios' ? 'x-circle' : 'x'}
                     size={13}
                     color="#1264F5"
                   />

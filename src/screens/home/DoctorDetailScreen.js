@@ -31,6 +31,8 @@ const DoctorDetailScreen = ({ navigation, route }) => {
     useDoctorDetailQuery(doctorId);
   const doctor = data?.data?.doctor;
   const bookedAppointments = data?.data?.booked_appointments || [];
+  const consultationClinics =
+  data?.data?.consultation_timings?.clinics || [];
 
   if (isLoading || isFetching) {
     return (
@@ -376,6 +378,112 @@ const DoctorDetailScreen = ({ navigation, route }) => {
             ))}
           </View>
         )}
+
+        {/* DOCTOR SLOT AVAILABILITY */}
+<View style={styles.card}>
+  <View style={styles.availabilityHeader}>
+    <View style={{ flex: 1 }}>
+      <Text style={styles.title}>Consultation Availability</Text>
+      {/* <Text style={styles.availabilitySubtitle}>
+        Weekly consultation timings
+      </Text> */}
+    </View>
+  </View>
+
+  {consultationClinics.length > 0 ? (
+    consultationClinics.map((clinicSchedule, clinicIndex) => (
+      <View
+        key={`${clinicSchedule.city || 'clinic'}-${clinicIndex}`}
+        style={styles.scheduleClinic}
+      >
+        {!!clinicSchedule.city && (
+          <View style={styles.scheduleLocation}>
+            <Feather
+              name="map-pin"
+              size={14}
+              color={colors.darkPrimary}
+            />
+            <Text style={styles.scheduleLocationText}>
+              {clinicSchedule.clinic_name
+                ? `${clinicSchedule.clinic_name}, ${clinicSchedule.city}`
+                : clinicSchedule.city}
+            </Text>
+          </View>
+        )}
+
+        {clinicSchedule.schedule?.length > 0 ? (
+          clinicSchedule.schedule.map((daySchedule, dayIndex) => (
+            <View
+              key={`${daySchedule.label}-${dayIndex}`}
+              style={styles.scheduleDay}
+            >
+              <View style={styles.scheduleDayHeader}>
+                <Text style={styles.scheduleDayLabel}>
+                  {daySchedule.label}
+                </Text>
+
+                <Text style={styles.scheduleSlotCount}>
+                  {daySchedule.slots?.length || 0}{' '}
+                  {(daySchedule.slots?.length || 0) === 1
+                    ? 'time slot'
+                    : 'time slots'}
+                </Text>
+              </View>
+
+              <View style={styles.scheduleSlots}>
+                {daySchedule.slots?.length > 0 ? (
+                  daySchedule.slots.map((slot, slotIndex) => (
+                    <View
+                      key={`${slot.start_time}-${slotIndex}`}
+                      style={styles.scheduleSlot}
+                    >
+                      <Feather
+                        name="clock"
+                        size={14}
+                        color="#16794B"
+                      />
+
+                      <Text style={styles.scheduleSlotText}>
+                        {slot.start_label || slot.start_time}
+                        {' - '}
+                        {slot.end_label || slot.end_time}
+                      </Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.scheduleClosedText}>
+                    No timings available
+                  </Text>
+                )}
+              </View>
+            </View>
+          ))
+        ) : (
+          <Text style={styles.scheduleClosedText}>
+            Schedule not available
+          </Text>
+        )}
+
+        {clinicSchedule.closed_days?.length > 0 && (
+          <Text style={styles.scheduleClosedText}>
+            Closed: {clinicSchedule.closed_days.join(', ')}
+          </Text>
+        )}
+      </View>
+    ))
+  ) : (
+    <View style={styles.scheduleEmpty}>
+      <Feather
+        name="calendar"
+        size={22}
+        color="#7A879E"
+      />
+      <Text style={styles.scheduleEmptyText}>
+        Consultation timings are not available.
+      </Text>
+    </View>
+  )}
+</View>
       </ScrollView>
 
       {/* ======================================
@@ -984,4 +1092,112 @@ const styles = StyleSheet.create({
   paymentPending: {
     color: '#D97706',
   },
+  availabilityHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 16,
+},
+
+availabilityIcon: {
+  width: 42,
+  height: 42,
+  borderRadius: 12,
+  backgroundColor: '#EAF2FF',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginRight: 12,
+},
+
+availabilitySubtitle: {
+  fontSize: 12,
+  color: '#7A879E',
+  marginTop: 3,
+},
+
+scheduleClinic: {
+  marginTop: 2,
+},
+
+scheduleLocation: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 12,
+},
+
+scheduleLocationText: {
+  marginLeft: 7,
+  fontSize: 13,
+  fontFamily: fonts.semiBold,
+  color: '#334155',
+},
+
+scheduleDay: {
+  paddingVertical: 12,
+  paddingHorizontal: 12,
+  backgroundColor: '#F8FAFC',
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#E8EDF3',
+  marginBottom: 10,
+},
+
+scheduleDayHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginBottom: 10,
+},
+
+scheduleDayLabel: {
+  fontSize: 14,
+  fontFamily: fonts.semiBold,
+  color: '#172033',
+},
+
+scheduleSlotCount: {
+  fontSize: 11,
+  color: '#64748B',
+},
+
+scheduleSlots: {
+  gap: 8,
+  flexDirection: 'row',
+  alignItems: 'center',
+  flexWrap: 'wrap'
+},
+
+scheduleSlot: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  alignSelf: 'flex-start',
+  backgroundColor: '#E7F7EE',
+  borderRadius: 8,
+  paddingHorizontal: 10,
+  paddingVertical: 8,
+},
+
+scheduleSlotText: {
+  marginLeft: 7,
+  fontSize: 12,
+  fontFamily: fonts.semiBold,
+  color: '#16794B',
+},
+
+scheduleClosedText: {
+  fontSize: 12,
+  color: '#7A879E',
+  marginTop: 4,
+},
+
+scheduleEmpty: {
+  alignItems: 'center',
+  paddingVertical: 18,
+},
+
+scheduleEmptyText: {
+  fontSize: 13,
+  color: '#7A879E',
+  marginTop: 8,
+  textAlign: 'center',
+},
 });
